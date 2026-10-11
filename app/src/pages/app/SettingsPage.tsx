@@ -15,7 +15,7 @@ import { todayIso } from '../../lib/clock';
 import { IS_DEMO, currentKey, isOwnKey } from '../../lib/account';
 import { PERSONAL_SETTINGS } from '../../data/accounts';
 import {
-  MIN_PASSWORD, accountEmail, can, changeLoginEmail, changePassword, currentSession, isSuperAdmin, logOutAndLeave, loginEmailChangedOn,
+  MIN_PASSWORD, accountEmail, can, canLogOut, changeLoginEmail, changePassword, currentSession, isSuperAdmin, logOutAndLeave, loginEmailChangedOn,
   me, passwordChangedOn, passwordProblems,
 } from '../../lib/auth';
 import { defaultSettings, fillTemplate, useSettings } from '../../lib/settingsStore';
@@ -627,14 +627,16 @@ function Security() {
     <>
       <Group title="Signed in" about={isSuperAdmin() ? 'A RunTruck super admin: every part of RunTruck, plus Developer.' : `Your ${me()?.type ?? 'RunTruck'} account at ${USER.company}.`}>
         <dl className="set-ids">
-          <div><dt>Email</dt><dd>{session?.email ?? '—'}</dd></div>
+          <div><dt>Email</dt><dd>{session?.email || accountEmail() || '—'}</dd></div>
           <div><dt>Company ID</dt><dd>{session?.companyId ?? '—'}</dd></div>
           <div><dt>Account ID</dt><dd>{session?.memberId ?? '—'}</dd></div>
           <div><dt>Account type</dt><dd>{me()?.type ?? '—'}</dd></div>
           <div><dt>Signed in</dt><dd>{when(session?.started)}</dd></div>
-          <div><dt>{session?.remember ? 'Stays signed in until' : 'Signs out'}</dt><dd>{session?.remember ? when(session.expires) : 'When the browser closes'}</dd></div>
+          {canLogOut()
+            ? <div><dt>{session?.remember ? 'Stays signed in until' : 'Signs out'}</dt><dd>{session?.remember ? when(session.expires) : 'When the browser closes'}</dd></div>
+            : <div><dt>Login</dt><dd>Switched off</dd></div>}
         </dl>
-        <div><button type="button" className="ui-btn" onClick={logOutAndLeave}>Log out</button></div>
+        {canLogOut() && <div><button type="button" className="ui-btn" onClick={logOutAndLeave}>Log out</button></div>}
       </Group>
       {isSuperAdmin() ? (
         <LoginEmail when={when} />

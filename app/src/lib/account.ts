@@ -86,6 +86,33 @@ export function storedSession(): { companyId: string; memberId: string } | null 
   return null;
 }
 
+// — logging in switched off —
+//
+// While false, RunTruck has no login page: opening the site with no session
+// saved opens it as RunTruck's owner (a super admin, Company ID 1), and
+// /login goes straight into the app. The accounts, passwords and sign-in
+// code are all kept; set this back to true to bring the login page back.
+// A session already saved in this browser (a client account that logged in
+// before) is still used until it is logged out or runs out.
+export const LOGIN_REQUIRED = false;
+
+// Ten years: the owner's automatic session never runs out in practice.
+const OWNER_SESSION_MS = 10 * 365 * 24 * 3_600_000;
+
+function openOwnerSessionIfNoLogin() {
+  if (LOGIN_REQUIRED || storedSession()) return;
+  const now = Date.now();
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      companyId: OWNER_COMPANY_ID, memberId: OWNER_MEMBER_ID, email: '',
+      started: new Date(now).toISOString(), expires: new Date(now + OWNER_SESSION_MS).toISOString(), remember: false,
+    }));
+  } catch {
+    // Storage blocked: the page still opens as the owner (the defaults below).
+  }
+}
+openOwnerSessionIfNoLogin();
+
 const signedIn = storedSession();
 // The company whose data this page shows, and the account using it. Fixed
 // for the life of the page.

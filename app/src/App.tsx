@@ -4,6 +4,7 @@ import { TabbedSection } from './components/TabbedSection';
 import { PAYROLL_IN_HR, PAYROLL_PATH, SECTION_TABS, type ViewKey } from './data/mock';
 import { LandingPage } from './pages/marketing/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { LOGIN_REQUIRED } from './lib/account';
 import { can } from './lib/auth';
 import { lazyNamed as page } from './lib/lazyPage';
 import { getSettings } from './lib/settingsStore';
@@ -87,7 +88,8 @@ export default function App() {
     <Suspense fallback={<div className="ui-empty">Loading…</div>}>
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
+      {/* With logging in switched off (lib/account.ts), /login opens the app. */}
+      <Route path="/login" element={LOGIN_REQUIRED ? <LoginPage /> : <Navigate to="/app" replace />} />
       <Route path="/app" element={<AppLayout />}>
         <Route index element={<StartPage />} />
         <Route path="dashboard" element={<DashboardPage />} />

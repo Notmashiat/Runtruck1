@@ -5,6 +5,10 @@ import {
 } from '../../data/site';
 import { useReveal, useScrollProgress } from '../../lib/scrollFx';
 import '../../styles/site.css';
+import { LOGIN_REQUIRED } from '../../lib/account';
+
+// What the buttons into the app say: there is no login while it is switched off (lib/account.ts).
+const OPEN_APP = LOGIN_REQUIRED ? 'Log in' : 'Open app';
 import { JourneyScene } from './JourneyScene';
 
 // The public marketing page ('/'). It wears the app's own look (Inter, the
@@ -72,7 +76,7 @@ export function LandingPage() {
             <a href="#pricing">Pricing</a>
             <a href="#faq">FAQ</a>
           </nav>
-          <Link className="ui-btn mk-nav-login" to="/login">Log in</Link>
+          <Link className="ui-btn mk-nav-login" to="/login">{OPEN_APP}</Link>
           <a className="ui-btn ui-btn-primary mk-nav-cta" href={trialHref}>Start free trial</a>
         </div>
       </header>
@@ -183,7 +187,7 @@ export function LandingPage() {
             </p>
             <div className="mk-cta">
               {CONTACT_EMAIL && <a className="ui-btn ui-btn-primary mk-btn-lg" href={trialHref}>Start your {TRIAL}</a>}
-              <Link className={`ui-btn mk-btn-lg${CONTACT_EMAIL ? '' : ' ui-btn-primary'}`} to="/login">{CONTACT_EMAIL ? 'Log in' : 'Log in to your account'}</Link>
+              <Link className={`ui-btn mk-btn-lg${CONTACT_EMAIL ? '' : ' ui-btn-primary'}`} to="/login">{CONTACT_EMAIL ? OPEN_APP : LOGIN_REQUIRED ? 'Log in to your account' : 'Open RunTruck'}</Link>
             </div>
           </div>
         </section>
@@ -200,7 +204,7 @@ export function LandingPage() {
             <a href="#product">Product</a>
             <a href="#pricing">Pricing</a>
             <a href="#faq">FAQ</a>
-            <Link to="/login">Log in</Link>
+            <Link to="/login">{OPEN_APP}</Link>
           </nav>
           <small>© {new Date().getFullYear()} RunTruck</small>
         </div>

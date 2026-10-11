@@ -118,6 +118,9 @@ The code is arranged so that change is contained:
 - `lib/storage.ts` and `lib/persist.ts` are the only places that read and
   write records. Replace their insides with API calls and the screens do not change.
 - `lib/auth.ts` is the only place that checks a password.
+- Logging in is switched off for now (`LOGIN_REQUIRED` in `lib/account.ts`):
+  the site opens as the owner and `/login` goes into the app. The login page,
+  accounts and passwords are all kept; set it to `true` to bring them back.
 - `setErrorSink()` in `lib/errorLog.ts` is where error reports can be sent to
   a server or a service such as Sentry.
 

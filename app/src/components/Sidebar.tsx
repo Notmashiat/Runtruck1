@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { urgentAlerts } from '../data/alerts';
 import { NAV, USER, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
-import { can, isSuperAdmin, logOutAndLeave, me } from '../lib/auth';
+import { can, canLogOut, isSuperAdmin, logOutAndLeave, me } from '../lib/auth';
 import { usePersisted } from '../lib/persist';
 import { todayIso } from '../lib/clock';
 import { isLive, pendingVersions, useReleaseState } from '../lib/releases';
@@ -164,10 +164,12 @@ export function Sidebar() {
             <NavIcon name="settings" />
             <span className="ui-nav-label">Settings</span>
           </Link>
-          <button type="button" className="ui-nav-item" data-tip={tip('Log out')} aria-label={tip('Log out')} onClick={logOutAndLeave}>
-            <NavIcon name="logout" />
-            <span className="ui-nav-label">Log out</span>
-          </button>
+          {canLogOut() && (
+            <button type="button" className="ui-nav-item" data-tip={tip('Log out')} aria-label={tip('Log out')} onClick={logOutAndLeave}>
+              <NavIcon name="logout" />
+              <span className="ui-nav-label">Log out</span>
+            </button>
+          )}
         </div>
 
       </aside>

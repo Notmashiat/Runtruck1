@@ -1,7 +1,7 @@
 import { ALL_PERMS, permits, type AccountType } from '../data/accounts';
 import { DEFAULT_SETTINGS } from '../data/settings';
 import {
-  COMPANY_ID, MEMBER_ID, OWNER_COMPANY_ID, OWNER_MEMBER_ID, readRegistry, registryKey, sessionStores, storedSession,
+  COMPANY_ID, LOGIN_REQUIRED, MEMBER_ID, OWNER_COMPANY_ID, OWNER_MEMBER_ID, readRegistry, registryKey, sessionStores, storedSession,
 } from './account';
 import { accountByEmail, accountById, reloadAccounts, saveAccount } from './accountStore';
 import { companyById, reloadCompanies } from './companyStore';
@@ -280,10 +280,16 @@ export function logOut() {
 }
 
 // Log out and reload on the login page, so no company data stays in memory.
+// With logging in switched off there is no login page: it reloads the app,
+// which opens as the owner.
 export function logOutAndLeave() {
   logOut();
-  window.location.replace('/login');
+  window.location.replace(LOGIN_REQUIRED ? '/login' : '/app');
 }
+
+// Whether "Log out" means anything: not for the owner while logging in is
+// switched off (there is nobody else to be).
+export const canLogOut = (): boolean => LOGIN_REQUIRED || !me()?.owner;
 
 // — the signed-in account's own login —
 
