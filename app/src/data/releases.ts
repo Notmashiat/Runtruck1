@@ -257,6 +257,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.16',
+    date: '2026-10-15',
+    title: 'No summary cards on list pages',
+    changes: [
+      {
+        id: 'no-summary-cards', kind: 'Updated', section: 'Everywhere', title: 'The row of summary cards is gone from the list pages',
+        details: 'The cards with a big number at the top of the list pages (for example Undispatched, In transit, Delivered and Needs POD on the Loads page) are removed from Loads, Customers, Facilities, Fleet, Accounting, Safety, HR and Developer, so each page opens straight on its list. A load’s own page keeps its row of details (customer, rate and so on).',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

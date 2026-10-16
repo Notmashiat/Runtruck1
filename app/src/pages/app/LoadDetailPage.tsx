@@ -117,7 +117,7 @@ export function LoadDetailPage() {
         {changing && <LoadStatusDialog load={sel} onClose={() => setChanging(false)} />}
       </Card>
 
-      <Kpis items={facts.map((f) => ({ label: f.k, value: f.v, note: f.note }))} />
+      <Kpis keep items={facts.map((f) => ({ label: f.k, value: f.v, note: f.note }))} />
 
       <div className="ui-grid-2">
         <Card title="Stops">
