@@ -2,6 +2,8 @@
 // wide (columns of a 12-column grid) and how tall (px), plus display
 // settings. Kept in this browser's storage (runtruck-dashboard).
 
+import { isLive } from '../lib/releases';
+
 export type WidgetId =
   | 'kpi-active' | 'kpi-revenue' | 'kpi-rpm' | 'kpi-unbilled' | 'kpi-overdue' | 'kpi-drivers' | 'kpi-trucks' | 'kpi-docs'
   | 'attention' | 'revenue' | 'active-loads' | 'drivers' | 'ar-aging' | 'by-customer' | 'lanes' | 'upcoming' | 'fleet' | 'cash';
@@ -101,6 +103,26 @@ export const DEFAULT_LAYOUT: DashLayout = {
     loadColumns: { customer: true, route: true, driver: false, pickup: false, rate: true, status: true },
   },
 };
+
+// From release 1.17 the dashboard shows at most this many widgets, and they
+// are fitted to the window so the page never scrolls.
+export const MAX_SHOWN = 7;
+
+// The standard layout from release 1.17: seven widgets in three rows.
+const FIT_LAYOUT: DashLayout = {
+  items: [
+    item('kpi-active', 3, 120), item('kpi-revenue', 3, 120), item('kpi-rpm', 3, 120), item('kpi-unbilled', 3, 120),
+    item('revenue', 8, 260), item('attention', 4, 260),
+    item('active-loads', 12, 300),
+    item('drivers', 4, 360, true), item('ar-aging', 6, 260, true), item('by-customer', 6, 260, true),
+    item('kpi-overdue', 3, 120, true), item('kpi-drivers', 3, 120, true), item('kpi-trucks', 3, 120, true), item('kpi-docs', 3, 120, true),
+    item('lanes', 6, 280, true), item('cash', 4, 230, true), item('fleet', 6, 300, true), item('upcoming', 4, 320, true),
+  ],
+  options: DEFAULT_LAYOUT.options,
+};
+
+// The layout a new (or reset) dashboard starts from.
+export const defaultLayout = () => (isLive('dashboard-fit') ? FIT_LAYOUT : DEFAULT_LAYOUT);
 
 // A saved layout, completed with anything added since it was saved (new
 // widgets arrive hidden at the end; unknown ones are dropped).

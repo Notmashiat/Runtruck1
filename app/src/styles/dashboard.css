@@ -30,6 +30,13 @@
 .dash-kpi-label { font-size: 15px; font-weight: 600; }
 .dash-kpi-note { margin-top: 3px; font-size: 12px; line-height: 16px; color: var(--ui-muted); }
 .dash-kpi-value { margin-top: auto; align-self: flex-end; font-size: clamp(24px, 2.6vw, 36px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+/* A number widget scaled down to fit the window (release 1.17): short, it
+   drops its note; very short, the label and number share one line. */
+.dash-card.is-kpi.is-short { padding: 10px 16px; }
+.dash-card.is-kpi.is-short .dash-kpi-note { display: none; }
+.dash-card.is-kpi.is-tiny { flex-direction: row; align-items: center; gap: 12px; }
+.dash-card.is-kpi.is-tiny .dash-kpi-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-card.is-kpi.is-tiny .dash-kpi-value { margin-top: 0; align-self: center; font-size: clamp(20px, 2vw, 26px); }
 
 /* lists and rows */
 .dash-list { display: flex; flex-direction: column; }
@@ -141,6 +148,7 @@
 .dash-switch span { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: #fff; transition: transform 120ms ease; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
 .dash-switch.is-on { background: var(--ui-primary); }
 .dash-switch.is-on span { transform: translateX(16px); }
+.dash-switch:disabled { opacity: 0.4; cursor: not-allowed; }
 .dash-opts { display: flex; flex-direction: column; border: 1px solid var(--ui-border); border-radius: 12px; }
 .dash-opt { display: flex; align-items: center; gap: 16px; padding: 12px 14px; border-top: 1px solid var(--ui-border); }
 .dash-opt:first-child { border-top: 0; }

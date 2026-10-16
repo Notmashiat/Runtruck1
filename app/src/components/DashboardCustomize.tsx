@@ -2,9 +2,10 @@ import { can } from '../lib/auth';
 import { WIDGET_NEEDS } from '../data/dashboard';
 import { useState } from 'react';
 import {
-  DEFAULT_LAYOUT, WIDGETS, type ChartStyle, type CustomerPeriod, type DashLayout, type DashOptions, type Density, type WidgetGroup,
+  MAX_SHOWN, WIDGETS, defaultLayout, type ChartStyle, type CustomerPeriod, type DashLayout, type DashOptions, type Density, type WidgetGroup,
   type WidgetId,
 } from '../data/dashboard';
+import { isLive } from '../lib/releases';
 import { Choice, useModal } from './FormBits';
 
 const WIDTHS: { span: number; label: string }[] = [
@@ -17,9 +18,9 @@ const COLUMNS: { key: keyof DashOptions['loadColumns']; label: string }[] = [
   { key: 'driver', label: 'Driver' }, { key: 'rate', label: 'Rate' }, { key: 'status', label: 'Status' },
 ];
 
-function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
-    <button type="button" role="switch" aria-checked={on} aria-label={label} className={`dash-switch${on ? ' is-on' : ''}`} onClick={() => onChange(!on)}>
+    <button type="button" role="switch" aria-checked={on} aria-label={label} className={`dash-switch${on ? ' is-on' : ''}`} disabled={disabled} onClick={() => onChange(!on)}>
       <span />
     </button>
   );
@@ -48,6 +49,8 @@ export function DashboardCustomize({ layout, onChange, onClose }: { layout: Dash
   };
   const allowed = layout.items.filter((i) => can(WIDGET_NEEDS[i.id]));
   const shown = allowed.filter((i) => !i.hidden).length;
+  // From release 1.17 the dashboard holds MAX_SHOWN widgets: once full, one has to be hidden before another is shown.
+  const full = isLive('dashboard-fit') && shown >= MAX_SHOWN;
 
   return (
     <dialog ref={ref} className="ui-dialog is-medium" aria-label="Customize dashboard" onClose={(e) => { if (ownEvent(e)) onClose(); }} onCancel={(e) => ownEvent(e)}>
@@ -69,7 +72,7 @@ export function DashboardCustomize({ layout, onChange, onClose }: { layout: Dash
                   if (!it) return null;
                   return (
                     <div key={w.id} className={`dash-lib-row${it.hidden ? ' is-off' : ''}`}>
-                      <Switch on={!it.hidden} onChange={(on) => setItem(w.id, { hidden: !on })} label={`Show ${w.title}`} />
+                      <Switch on={!it.hidden} onChange={(on) => setItem(w.id, { hidden: !on })} label={`Show ${w.title}`} disabled={full && it.hidden} />
                       <div className="dash-lib-text">
                         <strong>{w.title}</strong>
                         <span>{w.about}</span>
@@ -143,12 +146,14 @@ export function DashboardCustomize({ layout, onChange, onClose }: { layout: Dash
         <footer className="ui-dialog-foot">
           <button
             type="button" className="ui-btn"
-            onClick={() => { if (window.confirm('Put the dashboard back to the standard layout and settings?')) onChange(DEFAULT_LAYOUT); }}
+            onClick={() => { if (window.confirm('Put the dashboard back to the standard layout and settings?')) onChange(defaultLayout()); }}
           >
             Reset to default
           </button>
           <div style={{ flex: 1 }} />
-          <span className="muted" style={{ fontSize: 13 }}>{shown} of {allowed.length} widgets shown</span>
+          <span className="muted" style={{ fontSize: 13 }}>
+            {full ? `${shown} of ${MAX_SHOWN} shown, the most the dashboard holds. Hide one to add another.` : `${shown} of ${isLive('dashboard-fit') ? MAX_SHOWN : allowed.length} widgets shown`}
+          </span>
           <button type="button" className="ui-btn ui-btn-primary" onClick={closeNow}>Done</button>
         </footer>
       </div>

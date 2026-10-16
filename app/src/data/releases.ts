@@ -268,6 +268,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.17',
+    date: '2026-10-15',
+    title: 'The dashboard fits the window',
+    changes: [
+      {
+        id: 'dashboard-fit', kind: 'Updated', section: 'Dashboard', title: 'Up to 7 widgets, all on one screen',
+        details: 'The dashboard shows at most 7 widgets and fits them to the window, so the page no longer scrolls: their heights shrink together when the window is short, and a long list scrolls inside its own widget. In Customize, once 7 are shown the other switches are off until one is hidden. A dashboard that was set up with more keeps its first 7. The standard layout is now the four numbers, the revenue chart beside Needs attention, and the Active loads table across the width. On a phone, where widgets sit one above the other, the page still scrolls.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
