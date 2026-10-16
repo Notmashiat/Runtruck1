@@ -209,7 +209,7 @@ export const RELEASES: Release[] = [
     changes: [
       {
         id: 'load-pipeline', kind: 'Updated', section: 'Loads', title: 'A pipeline bar at the top of the Loads page',
-        details: 'The Loads page opens with a bar like Fleet’s tabs: Booked, Dispatched, En route, Delivered, Invoiced and Complete, each with how many loads are in it. Booked is a load with nobody assigned yet, En route covers at pickup, in transit and delayed, Delivered is waiting to be invoiced, Invoiced is on a sent invoice not yet paid, and Complete is paid. Clicking a stage lists its loads; the search still looks across every load. It replaces the Active, Needs POD, Delivered and All buttons.',
+        details: 'The Loads page opens with a bar like Fleet’s tabs: Booked, Dispatched, En route, Delivered, Invoiced and Complete. Booked is a load with nobody assigned yet, En route covers at pickup, in transit and delayed, Delivered is waiting to be invoiced, Invoiced is on a sent invoice not yet paid, and Complete is paid. Clicking a stage lists its loads; the search still looks across every load. It replaces the Active, Needs POD, Delivered and All buttons.',
       },
     ],
   },

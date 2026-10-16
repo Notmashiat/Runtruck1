@@ -108,7 +108,7 @@ export function LoadsPage() {
             aria-current={on ? 'page' : undefined}
             onClick={() => { setParams({ stage: stageSlug(s) }); setQuery(''); setOpenId(firstId(byStage.get(s) ?? [])); }}
           >
-            {s}<span className="ui-tab-count">{byStage.get(s)?.length ?? 0}</span>
+            {s}
           </button>
         );
       })}
