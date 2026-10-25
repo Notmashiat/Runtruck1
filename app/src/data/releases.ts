@@ -290,6 +290,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.19',
+    date: '2026-10-25',
+    title: 'Search customers, trucks and facilities in New Load',
+    changes: [
+      {
+        id: 'load-form-search', kind: 'Updated', section: 'Loads', title: 'Searchable customer, truck and facility, and Add facility without leaving the load',
+        details: 'In New Load and Edit load, Customer, Truck and each stop’s Facility Name are dropdowns you can type in to search: trucks by unit or by their driver, facilities by name, type or city. When a facility is not on file, "+ Add facility" at the bottom of its list opens the New facility form over the load, filled in with the name typed and the stop’s address; once saved it is in Facilities and is picked for the stop, and the load is still open where it was.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

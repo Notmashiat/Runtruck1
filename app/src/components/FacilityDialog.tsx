@@ -140,7 +140,8 @@ function sections(takenNames: string[]): SectionSpec[] {
 }
 
 // Add or edit a facility. `prefill` starts a new one from a load stop.
-export function FacilityDialog({ facility, prefill, onClose }: { facility?: Facility; prefill?: FormValues; onClose: () => void }) {
+// `onSaved` gets the facility as saved (New Load adds one without leaving the load).
+export function FacilityDialog({ facility, prefill, onSaved, onClose }: { facility?: Facility; prefill?: FormValues; onSaved?: (f: Facility) => void; onClose: () => void }) {
   const { facilities, loads, saveFacility, archiveFacility, deleteFacility } = useAppShell();
   const id = facility?.id ?? nextId('FAC', facilities.map((f) => f.id));
   const ops = getSettings().operations;
@@ -160,7 +161,11 @@ export function FacilityDialog({ facility, prefill, onClose }: { facility?: Faci
       noun="facility"
       recordLabel={facility ? facility.name : 'this facility'}
       deleteNote={`${facility?.name ?? 'The facility'} is removed from the register for good.${onLoads ? ` Its ${onLoads} load stop${onLoads === 1 ? '' : 's'} keep the name and address but lose the site details.` : ''} To keep it on file but out of the way, use Archive instead.`}
-      onSave={(v) => saveFacility(facilityFromForm(v, id, facility))}
+      onSave={(v) => {
+        const saved = facilityFromForm(v, id, facility);
+        saveFacility(saved);
+        onSaved?.(saved);
+      }}
       onArchive={(a) => archiveFacility(id, a)}
       onDelete={() => deleteFacility(id)}
       onClose={onClose}

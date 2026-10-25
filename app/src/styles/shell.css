@@ -444,6 +444,25 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .ui-btn-danger-solid { color: #fff; background: var(--ui-red); border-color: var(--ui-red); }
 .ui-btn-danger-solid:hover { background: color-mix(in srgb, var(--ui-red) 85%, #000); }
 :root[data-theme="dark"] .ui-btn-danger-solid { color: #1a0d0c; }
+/* — searchable dropdown (components/SearchSelect.tsx) — */
+.ui-pick { position: relative; min-width: 0; }
+.ui-pick > .ui-input { padding-right: 30px; cursor: pointer; text-overflow: ellipsis; }
+.ui-pick.is-open > .ui-input { cursor: text; }
+.ui-pick-chevron { position: absolute; top: 50%; right: 11px; transform: translateY(-50%); font-size: 11px; color: var(--ui-muted); pointer-events: none; }
+.ui-pick-list {
+  position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; max-height: 264px; margin: 0; padding: 4px; overflow-y: auto; list-style: none;
+  background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 10px; box-shadow: 0 8px 24px var(--ui-shadow);
+}
+.ui-pick-row { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border-radius: 7px; cursor: pointer; }
+.ui-pick-row.is-active { background: var(--ui-tab-hover); }
+.ui-pick-row[aria-selected="true"] .ui-pick-label { font-weight: 600; color: var(--ui-primary-hover); }
+.ui-pick-label { font-size: 13px; color: var(--ui-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-pick-label.is-muted { color: var(--ui-muted); }
+.ui-pick-hint { font-size: 12px; color: var(--ui-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-pick-row.is-add { margin-top: 4px; border-top: 1px solid var(--ui-border); border-radius: 0 0 7px 7px; }
+.ui-pick-row.is-add .ui-pick-label { font-weight: 600; color: var(--ui-primary); }
+.ui-pick-none { padding: 8px 10px; font-size: 13px; color: var(--ui-muted); }
+
 /* — New Load popup, one-page layout (components/LoadFormDialog.tsx, release 1.18):
    pickup, delivery and freight side by side under customer, tender and truck. — */
 .ui-dialog.is-large.nlf { width: min(1320px, calc(100% - 48px)); height: min(900px, calc(100vh - 48px)); }

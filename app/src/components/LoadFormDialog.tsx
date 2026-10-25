@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import { money } from '../data/accounting';
-import { facilityFor, isRoad } from '../data/facilities';
+import { facilityFor, isRoad, type Facility } from '../data/facilities';
 import { CUSTOMERS, type Load } from '../data/mock';
+import { isLive } from '../lib/releases';
 import { AttachDialog } from './AttachDialog';
+import { FacilityDialog } from './FacilityDialog';
 import { Choice, ConfirmDelete, Field } from './LoadFormBits';
+import { SearchSelect } from './SearchSelect';
 import {
   DOCUMENTS, FREIGHT_CLASSES, INITIAL, LTL_SERVICES, MODES, PACKAGING, draftFromLoad, emptyStop, estimateMiles, fuelFor, nextId, num,
   positive, toLoad, type Draft, type StopDraft,
@@ -111,6 +114,10 @@ export function LoadFormDialog({ load, onClose, onSaved, onDeleted }: LoadFormDi
   const [attachingDoc, setAttachingDoc] = useState<string | null>(null);
   // The stop open for editing on the Stops page.
   const [openStop, setOpenStop] = useState<number | null>(null);
+  // From release 1.19: customer, truck and facility are searchable, and a
+  // facility that is not on file yet is added from here (the stop it is for, and the name typed).
+  const searchable = isLive('load-form-search');
+  const [addingFacility, setAddingFacility] = useState<{ stop: number; name: string } | null>(null);
   const editing = Boolean(load);
 
   useEffect(() => {
@@ -128,10 +135,10 @@ export function LoadFormDialog({ load, onClose, onSaved, onDeleted }: LoadFormDi
   // Picking a registered facility fills in its address and site contact.
   const setFacility = (i: number, name: string) => {
     const f = facilityFor(activeFacilities, name);
-    if (!f) {
-      setStop(i, { facility: name });
-      return;
-    }
+    if (f) fillFacility(i, f);
+    else setStop(i, { facility: name });
+  };
+  const fillFacility = (i: number, f: Facility) => {
     const t = (k: string) => (typeof f.details[k] === 'string' ? (f.details[k] as string).trim() : '');
     const pickup = d.stops[i].kind === 'Pickup';
     const who = (pickup ? t('shipName') : t('recvName')) || t('shipName');
@@ -214,8 +221,18 @@ export function LoadFormDialog({ load, onClose, onSaved, onDeleted }: LoadFormDi
     return (
       <div className="nlf-col">
         <div className="nlf-title">{title}</div>
-        <Field label="Facility Name" invalid={bad('facility')}>
-          <input className="ui-input" list="nlf-facilities" value={s.facility} onChange={(e) => setFacility(i, e.target.value)} />
+        <Field label="Facility Name" invalid={bad('facility')} group={searchable}>
+          {searchable ? (
+            <SearchSelect
+              ariaLabel={`${n} facility`} value={s.facility} invalid={bad('facility')} placeholder="Search facilities"
+              options={activeFacilities.map((f) => ({ value: f.name, hint: `${f.type} · ${f.city}, ${f.state}` }))}
+              onChange={(name) => setFacility(i, name)}
+              addLabel={(q) => (q ? `Add facility “${q}”` : 'Add facility')}
+              onAdd={(q) => setAddingFacility({ stop: i, name: q })}
+            />
+          ) : (
+            <input className="ui-input" list="nlf-facilities" value={s.facility} onChange={(e) => setFacility(i, e.target.value)} />
+          )}
         </Field>
         <Field label="Address" invalid={bad('address')}>
           <input className="ui-input" value={s.address} onChange={(e) => setStop(i, { address: e.target.value })} />
@@ -267,7 +284,6 @@ export function LoadFormDialog({ load, onClose, onSaved, onDeleted }: LoadFormDi
     );
   };
 
-  const truckNow = activeTrucks.find((x) => x.unit === d.truck);
   const banner = (p: Page) => showErrors && errors[p]?.length ? <div className="ui-errors">Fill in: {errors[p]?.join(' · ')}</div> : null;
   const last = d.stops.length - 1;
   const nextPage = PAGES[PAGES.indexOf(page) + 1];
@@ -277,32 +293,32 @@ export function LoadFormDialog({ load, onClose, onSaved, onDeleted }: LoadFormDi
       <>
         {banner('Load info')}
         <div className="nlf-grid">
-          <Field label="Customer" invalid={missing('Load info', 'Customer')}>
-            <select
-              className="ui-input" value={d.customer}
-              onChange={(e) => {
-                const c = CUSTOMERS.find((x) => x.name === e.target.value);
-                setD((prev) => ({ ...prev, customer: e.target.value, billTo: prev.billTo || e.target.value, terms: c?.terms ?? prev.terms }));
+          <Field label="Customer" invalid={missing('Load info', 'Customer')} group={searchable}>
+            <SearchSelect
+              plain={!searchable} ariaLabel="Customer" value={d.customer} placeholder={searchable ? 'Search customers' : 'Select a customer'}
+              invalid={missing('Load info', 'Customer')}
+              options={CUSTOMERS.map((c) => ({ value: c.name, hint: c.contact }))}
+              onChange={(name) => {
+                const c = CUSTOMERS.find((x) => x.name === name);
+                setD((prev) => ({ ...prev, customer: name, billTo: prev.billTo || name, terms: c?.terms ?? prev.terms }));
               }}
-            >
-              <option value="">Select a customer</option>
-              {CUSTOMERS.map((c) => <option key={c.name}>{c.name}</option>)}
-            </select>
+            />
           </Field>
           <Field label="Tender #">
             <input className="ui-input" value={d.ref} onChange={(e) => set('ref', e.target.value)} />
           </Field>
-          <label className="ui-field">
+          <div className="ui-field" role="group" aria-label="Truck">
             <span className="ui-field-label">Truck</span>
-            <select className="ui-input" value={d.truck} onChange={(e) => setTruck(e.target.value)}>
-              <option value="">None yet</option>
-              {activeTrucks.map((x) => <option key={x.id} value={x.unit}>{x.unit}</option>)}
-              {d.truck && !truckNow && <option value={d.truck}>{d.truck}</option>}
-            </select>
+            <SearchSelect
+              plain={!searchable} ariaLabel="Truck" value={d.truck} emptyLabel="None yet" placeholder="Search trucks or drivers"
+              // Searchable by its driver too, since that is who a dispatcher has in mind.
+              options={activeTrucks.map((x) => ({ value: x.unit, hint: `${x.driver && x.driver !== 'Unassigned' ? x.driver : 'No driver'} · ${x.status}` }))}
+              onChange={setTruck}
+            />
             <span className="ui-field-help">
               {d.brokered ? `Partner carrier: ${d.carrier || '—'}` : d.truck ? `Driver: ${d.driver || 'none assigned to this truck'}` : 'Its driver comes with it'}
             </span>
-          </label>
+          </div>
 
           {stopFields(0, 'Pickup Information')}
           {stopFields(last, 'Delivery Information')}
@@ -573,6 +589,19 @@ export function LoadFormDialog({ load, onClose, onSaved, onDeleted }: LoadFormDi
           <button type="button" className="ui-btn ui-btn-primary" onClick={save}>{editing ? 'Save changes' : 'Create Load'}</button>
         </footer>
       </div>
+      {addingFacility && (
+        <FacilityDialog
+          prefill={(() => {
+            const s = d.stops[addingFacility.stop];
+            return {
+              name: addingFacility.name, type: s.kind === 'Pickup' ? 'Shipper' : 'Receiver',
+              street: s.address, city: s.city, state: s.state, zip: s.zip,
+            };
+          })()}
+          onSaved={(f) => fillFacility(addingFacility.stop, f)}
+          onClose={() => setAddingFacility(null)}
+        />
+      )}
       {confirmDelete && load && <ConfirmDelete load={load} onConfirm={remove} onClose={() => setConfirmDelete(false)} />}
     </dialog>
   );
