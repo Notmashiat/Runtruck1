@@ -279,6 +279,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.18',
+    date: '2026-10-25',
+    title: 'A new New Load popup',
+    changes: [
+      {
+        id: 'load-form-v2', kind: 'Updated', section: 'Loads', title: 'New Load on one page: pickup, delivery and freight side by side',
+        details: 'New Load (and Edit load) opens on Load Information: customer, tender number and truck across the top, then the pickup, the delivery and the freight in three columns, and notes. Each stop has its facility, address, city and state, ZIP, the window it opens and closes (date and time, which can run into the next day), the actual times and two PO numbers. Freight has commodity, weight, declared value, pieces, packaging, the rate, a temperature range and hazmat with as many UN numbers as needed. The fuel surcharge (the percentage in Settings › Invoicing), the total miles (estimated from the registered facilities on the route) and the rate per mile are worked out from the rate and stops. Picking a truck adds the driver assigned to it in Fleet › Trucks. Stops lists every stop in order (facility, address, and the day and time it opens), and a click on one opens its fields; Add Stop puts another before the final delivery. LTL holds the shipment type and LTL details, and Documents the paperwork. Next at the bottom moves to the following page. Equipment, trailer, partner carrier and billing fields are no longer in the popup; a load that already has them keeps them.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

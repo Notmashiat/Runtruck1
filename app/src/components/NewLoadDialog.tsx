@@ -1,109 +1,21 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import { money } from '../data/accounting';
-import type { BillDocument } from '../data/bills';
 import { facilityFor, isRoad, stopHint, type Facility } from '../data/facilities';
-import { DOCUMENT_SLOTS, LOAD_TAG, normalizeLoad } from '../data/loads';
-import { CARRIERS, CUSTOMERS, stopsOf, USER, type Load } from '../data/mock';
-import { isoFromText, shortDate } from '../lib/clock';
-import { nextSerial } from '../lib/ids';
+import { CARRIERS, CUSTOMERS, USER, type Load } from '../data/mock';
 import { isLive } from '../lib/releases';
 import { AttachDialog } from './AttachDialog';
+import { LoadFormDialog } from './LoadFormDialog';
+import { Choice, ConfirmDelete, Field, Head, Stat } from './LoadFormBits';
+import {
+  DOCUMENTS, EQUIPMENT, FREIGHT_CLASSES, INITIAL, LTL_SERVICES, MODES, PACKAGING, TERMS, coveredStatus, draftFromLoad, emptyStop, nextId,
+  num, positive, signedMoney, toLoad, type Draft, type StopDraft,
+} from './loadForm';
 
 type Section = 'Load info' | 'Stops' | 'Freight' | 'LTL' | 'Carrier' | 'Driver & equipment' | 'Rates' | 'Documents' | 'Notes' | 'Review';
 const SECTIONS: Section[] = ['Load info', 'Stops', 'Freight', 'LTL', 'Carrier', 'Driver & equipment', 'Rates', 'Documents', 'Notes', 'Review'];
 
-type Mode = 'FTL' | 'LTL' | 'Partial';
-const MODES: Mode[] = ['FTL', 'LTL', 'Partial'];
-const EQUIPMENT = ['Dry van, 53 ft', 'Reefer, 53 ft', 'Flatbed, 48 ft', 'Flatbed, tarped', 'Step deck, 48 ft', 'Power only', 'Box truck, 26 ft'];
-const PACKAGING = ['Pallets', 'Skids', 'Crates', 'Boxes', 'Drums', 'Totes', 'Loose'];
-const FREIGHT_CLASSES = ['50', '55', '60', '65', '70', '77.5', '85', '92.5', '100', '110', '125', '150', '175', '200', '250', '300', '400', '500'];
-const LTL_SERVICES = ['Liftgate at pickup', 'Liftgate at delivery', 'Residential delivery', 'Inside delivery', 'Delivery appointment', 'Limited access'];
-const TERMS = ['Net 15', 'Net 30', 'Net 45', 'Net 60', 'Quick pay'];
-const DOCUMENTS = DOCUMENT_SLOTS;
-
-interface StopDraft {
-  kind: 'Pickup' | 'Delivery';
-  facility: string;
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  date: string;
-  from: string;
-  to: string;
-  number: string;
-  contact: string;
-}
-
-interface Draft {
-  customer: string;
-  billTo: string;
-  ref: string;
-  po: string;
-  mode: Mode;
-  equipment: string;
-  dispatcher: string;
-  stops: StopDraft[];
-  commodity: string;
-  weight: string;
-  pieces: string;
-  packaging: string;
-  value: string;
-  temp: string;
-  hazmat: boolean;
-  unNumber: string;
-  freightClass: string;
-  nmfc: string;
-  handlingUnits: string;
-  length: string;
-  width: string;
-  height: string;
-  stackable: boolean;
-  services: string[];
-  brokered: boolean;
-  carrier: string;
-  carrierMc: string;
-  carrierDot: string;
-  carrierContact: string;
-  carrierPhone: string;
-  carrierRate: string;
-  driver: string;
-  truck: string;
-  trailer: string;
-  lineHaul: string;
-  fuel: string;
-  accessorials: string;
-  miles: string;
-  driverPay: string;
-  terms: string;
-  // Document name → file name, and the stored file when it was attached
-  // through the attach popup (so it can be opened from the load later).
-  docs: Record<string, string>;
-  files: Record<string, BillDocument>;
-  instructions: string;
-  internal: string;
-}
-
-function emptyStop(kind: StopDraft['kind']): StopDraft {
-  return { kind, facility: '', address: '', city: '', state: '', zip: '', date: '', from: '', to: '', number: '', contact: '' };
-}
-
-const INITIAL: Draft = {
-  customer: '', billTo: '', ref: '', po: '', mode: 'FTL', equipment: '', dispatcher: USER.name,
-  stops: [emptyStop('Pickup'), emptyStop('Delivery')],
-  commodity: '', weight: '', pieces: '', packaging: 'Pallets', value: '', temp: '', hazmat: false, unNumber: '',
-  freightClass: '', nmfc: '', handlingUnits: '', length: '', width: '', height: '', stackable: false, services: [],
-  brokered: false, carrier: '', carrierMc: '', carrierDot: '', carrierContact: '', carrierPhone: '', carrierRate: '',
-  driver: '', truck: '', trailer: '',
-  lineHaul: '', fuel: '', accessorials: '', miles: '', driverPay: '', terms: 'Net 30',
-  docs: {}, files: {}, instructions: '', internal: '',
-};
-
 type Errors = Partial<Record<Section, string[]>>;
-
-const num = (s: string) => Number(s) || 0;
-const positive = (s: string) => Number(s) > 0;
 
 // What still has to be filled in before the load can be created, per section.
 function validate(d: Draft): Errors {
@@ -137,191 +49,7 @@ function validate(d: Draft): Errors {
   return e;
 }
 
-function signedMoney(n: number) {
-  return n < 0 ? `-${money(-n)}` : money(n);
-}
-
-// Statuses a load is still "planned" in; editing its coverage there recomputes
-// the status (a driver or carrier → Dispatched, none → Needs driver). Once it is
-// moving, an edit keeps the status it has. From release 1.12 a covered load is
-// 'Booked' until someone moves it to Dispatched (the driver has set off).
-const PLANNED = ['Needs driver', 'Dispatched'];
-const PLANNED_BOOKING = ['Needs driver', 'Booked'];
-const coveredStatus = () => (isLive('load-pipeline-moves') ? 'Booked' : 'Dispatched');
-
-function toLoad(d: Draft, id: string, prev?: Load): Load {
-  const place = (s: StopDraft) => `${s.city.trim()}, ${s.state.trim().toUpperCase()}`;
-  const street = (s: StopDraft) => `${s.address.trim()}, ${place(s)}`;
-  const first = d.stops.find((s) => s.kind === 'Pickup') ?? d.stops[0];
-  const last = [...d.stops].reverse().find((s) => s.kind === 'Delivery') ?? d.stops[d.stops.length - 1];
-  const lineHaul = num(d.lineHaul);
-  const miles = num(d.miles);
-  const total = lineHaul + num(d.fuel) + num(d.accessorials);
-  const cost = d.brokered ? num(d.carrierRate) : num(d.driverPay);
-  // A partner carrier from the list, or one typed in (with its MC / DOT numbers).
-  const carrier = d.brokered
-    ? CARRIERS.slice(1).find((c) => c.name === d.carrier.trim()) ?? { name: d.carrier.trim(), mc: d.carrierMc.trim() || '—', dot: d.carrierDot.trim() || '—' }
-    : CARRIERS[0];
-  const covered = d.brokered || Boolean(d.driver);
-  const kept = prev && !(isLive('load-pipeline-moves') ? PLANNED_BOOKING : PLANNED).includes(prev.status) ? prev : undefined;
-  const reefer = d.equipment.startsWith('Reefer');
-  const status = kept ? kept.status : covered ? coveredStatus() : 'Needs driver';
-  const now = new Date().toISOString();
-
-  // normalizeLoad writes the short date text from the real dates.
-  return normalizeLoad({
-    id,
-    customer: d.customer,
-    route: `${place(first)} → ${place(last)}`,
-    pickup: shortDate(first.date),
-    delivery: shortDate(last.date),
-    pickupDate: first.date,
-    deliveryDate: last.date,
-    deliveredOn: prev?.deliveredOn,
-    charges: { lineHaul, fuel: num(d.fuel), accessorials: num(d.accessorials) },
-    driver: d.driver.trim() || 'Unassigned',
-    unit: [d.truck.trim(), d.trailer.trim()].filter(Boolean).join(' / ') || '—',
-    rate: money(lineHaul),
-    status,
-    tagClass: kept ? kept.tagClass : LOAD_TAG[status],
-    miles: miles > 0 ? miles.toLocaleString('en-US') : '—',
-    rpm: miles > 0 ? `$${(lineHaul / miles).toFixed(2)}` : '—',
-    pay: cost > 0 ? money(cost) : '—',
-    margin: cost > 0 ? signedMoney(total - cost) : '—',
-    commodity: d.commodity.trim(),
-    weight: `${num(d.weight).toLocaleString('en-US')} lb`,
-    equip: d.equipment,
-    temp: reefer ? (d.temp ? `${d.temp} °F` : 'Set at pickup') : 'Ambient',
-    ref: d.ref.trim() || d.po.trim() || '—',
-    from: first.facility.trim(),
-    fromAddr: street(first),
-    to: last.facility.trim(),
-    toAddr: street(last),
-    carrier: carrier.name,
-    carrierMc: carrier.mc,
-    carrierDot: carrier.dot,
-    mode: d.mode === 'FTL' ? 'Full truckload' : d.mode === 'LTL' ? 'Less than truckload' : 'Partial',
-    ltl: d.mode === 'LTL'
-      ? [`Class ${d.freightClass}`, `${d.handlingUnits} ${d.packaging.toLowerCase()}`, ...d.services].join(' · ')
-      : undefined,
-    stops: d.stops.map((s) => ({
-      kind: s.kind,
-      name: s.facility.trim(),
-      address: `${street(s)} ${s.zip.trim()}`.trim(),
-      when: `${shortDate(s.date)} · ${s.from && s.to ? `${s.from}–${s.to}` : s.from || s.to || 'Any time'}`,
-      date: s.date,
-    })),
-    documents: DOCUMENTS.map((name) => {
-      const file = d.docs[name] ?? '';
-      const doc = d.files[name];
-      // The stored file goes with the slot only while it is the file named there.
-      return { name, file, ...(file && doc && doc.name === file ? { doc } : {}) };
-    }),
-    carrierRate: d.brokered ? money(num(d.carrierRate)) : undefined,
-    notes: d.instructions.trim() || undefined,
-    history: [...(prev?.history ?? []), { at: now, by: USER.name, what: prev ? 'Load edited' : 'Load created' }],
-    createdAt: prev?.createdAt,
-    updatedAt: prev?.updatedAt,
-    form: d,
-  });
-}
-
-function isDraft(x: unknown): x is Draft {
-  return Boolean(x) && typeof x === 'object' && Array.isArray((x as Draft).stops) && typeof (x as Draft).customer === 'string';
-}
-
-// The form entry for an existing load: what was typed, if it was made or edited
-// with this form; otherwise rebuilt from the load's fields (the demo loads).
-function draftFromLoad(l: Load): Draft {
-  if (isDraft(l.form)) return { ...INITIAL, ...l.form };
-  const digits = (s: string) => s.replace(/[^0-9.-]/g, '');
-  const stops: StopDraft[] = stopsOf(l).map((s) => {
-    // 'addr, City, ST 93725' and 'Sep 8 · 08:00–12:00'
-    const parts = s.address.split(',').map((p) => p.trim());
-    const [state = '', zip = ''] = (parts.pop() ?? '').split(/\s+/);
-    const city = parts.pop() ?? '';
-    const [day, window = ''] = s.when.split(' · ');
-    const [from = '', to = ''] = window.includes('–') ? window.split('–') : [];
-    return {
-      ...emptyStop(s.kind), facility: s.name, address: parts.join(', '), city, state, zip,
-      date: isoFromText(day), from, to,
-    };
-  });
-  const [truck = '', trailer = ''] = l.unit === '—' ? [] : l.unit.split(' / ');
-  const partner = CARRIERS.slice(1).find((c) => c.name === l.carrier);
-  return {
-    ...INITIAL,
-    customer: l.customer,
-    ref: l.ref === '—' ? '' : l.ref,
-    mode: l.mode === 'Less than truckload' ? 'LTL' : l.mode === 'Partial' ? 'Partial' : 'FTL',
-    equipment: l.equip,
-    stops,
-    commodity: l.commodity,
-    weight: digits(l.weight),
-    temp: digits(l.temp),
-    brokered: Boolean(partner),
-    carrier: partner?.name ?? '',
-    carrierMc: partner?.mc ?? '',
-    carrierDot: partner?.dot ?? '',
-    carrierRate: partner ? digits(l.carrierRate ?? l.pay) : '',
-    driver: l.driver === 'Unassigned' ? '' : l.driver,
-    truck,
-    trailer,
-    lineHaul: digits(l.rate),
-    miles: digits(l.miles),
-    driverPay: partner ? '' : digits(l.pay),
-    docs: Object.fromEntries((l.documents ?? []).filter((x) => x.file).map((x) => [x.name, x.file])),
-    files: Object.fromEntries((l.documents ?? []).flatMap((x) => (x.file && x.doc ? [[x.name, x.doc]] : []))),
-    instructions: l.notes ?? '',
-  };
-}
-
-// The next load number: one more than the highest ever used, so a deleted
-// load's number is never given to a different load (lib/ids.ts).
-function nextId(loads: Load[]) {
-  return `L-${nextSerial('L', loads.map((l) => l.id))}`;
-}
-
-interface FieldProps {
-  label: string;
-  required?: boolean;
-  invalid?: boolean;
-  wide?: boolean;
-  group?: boolean;
-  children: ReactNode;
-}
-
-// A labelled form control. `group` renders a <div> for controls that are not a
-// single input (segmented choices), so the label does not swallow their clicks.
-function Field({ label, required, invalid, wide, group, children }: FieldProps) {
-  const cls = `ui-field${wide ? ' is-wide' : ''}${invalid ? ' is-invalid' : ''}`;
-  const head = (
-    <span className="ui-field-label">
-      {label}
-      {required && <span className="ui-req"> *</span>}
-    </span>
-  );
-  const error = invalid && <span className="ui-field-error">Required</span>;
-  return group ? (
-    <div className={cls} role="group" aria-label={label}>{head}{children}{error}</div>
-  ) : (
-    <label className={cls}>{head}{children}{error}</label>
-  );
-}
-
-function Choice<T extends string>({ options, value, onChange }: { options: T[]; value: T; onChange: (v: T) => void }) {
-  return (
-    <div className="ui-filter" style={{ alignSelf: 'flex-start' }}>
-      {options.map((o) => (
-        <button key={o} type="button" className={`ui-filter-opt${value === o ? ' is-active' : ''}`} onClick={() => onChange(o)}>
-          {o}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-interface NewLoadDialogProps {
+export interface NewLoadDialogProps {
   // Given: the dialog edits this load (Save changes, Delete load). Absent: a new load.
   load?: Load;
   onClose: () => void;
@@ -329,10 +57,16 @@ interface NewLoadDialogProps {
   onDeleted?: () => void;
 }
 
+// The New Load / Edit load popup. From release 1.18 it is the one-page layout
+// (LoadFormDialog); before that, the step-by-step one below.
+export function NewLoadDialog(props: NewLoadDialogProps) {
+  return isLive('load-form-v2') ? <LoadFormDialog {...props} /> : <ClassicLoadDialog {...props} />;
+}
+
 // The New Load / Edit load popup: the same shell as Settings, sized for a full
 // load entry. Required fields are checked when the load is saved; sections with
 // something missing get a count in the menu and the dialog jumps to the first.
-export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDialogProps) {
+function ClassicLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const bodyRef = useRef<HTMLElement>(null);
   const { loads, addLoad, updateLoad, deleteLoad, drivers, trucks, trailers, facilities } = useAppShell();
@@ -930,63 +664,5 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
       </div>
       {confirmDelete && load && <ConfirmDelete load={load} onConfirm={remove} onClose={() => setConfirmDelete(false)} />}
     </dialog>
-  );
-}
-
-// "Are you sure?" for Delete load: its own small modal on top of the form.
-// Cancel is focused first, so Enter never deletes by accident.
-function ConfirmDelete({ load, onConfirm, onClose }: { load: Load; onConfirm: () => void; onClose: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (el && !el.open) el.showModal();
-  }, []);
-
-  return (
-    <dialog
-      ref={ref}
-      className="ui-dialog is-confirm"
-      role="alertdialog"
-      aria-label={`Delete load ${load.id}?`}
-      onClose={(e) => {
-        e.stopPropagation();
-        onClose();
-      }}
-      onCancel={(e) => e.stopPropagation()}
-    >
-      <div className="ui-dialog-main">
-        <section className="ui-dialog-body">
-          <h2 className="ui-h2" style={{ margin: 0 }}>Delete load {load.id}?</h2>
-          <p className="ui-p" style={{ marginTop: 0 }}>
-            {load.customer} · {load.route}. The load is removed from the board, its load page and the planner.
-            This can’t be undone.
-          </p>
-        </section>
-        <footer className="ui-dialog-foot">
-          <div style={{ flex: 1 }} />
-          <button type="button" className="ui-btn" onClick={() => { ref.current?.close(); onClose(); }} autoFocus>Cancel</button>
-          <button type="button" className="ui-btn ui-btn-danger-solid" onClick={onConfirm}>Yes, delete load</button>
-        </footer>
-      </div>
-    </dialog>
-  );
-}
-
-function Head({ title, help }: { title: string; help: string }) {
-  return (
-    <div>
-      <h2 className="ui-h2" style={{ margin: 0 }}>{title}</h2>
-      <p className="ui-p" style={{ marginTop: 4 }}>{help}</p>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="ui-label">{label}</div>
-      <div className="ui-kv-value" style={{ fontSize: 15 }}>{value}</div>
-    </div>
   );
 }

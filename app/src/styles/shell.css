@@ -444,6 +444,79 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .ui-btn-danger-solid { color: #fff; background: var(--ui-red); border-color: var(--ui-red); }
 .ui-btn-danger-solid:hover { background: color-mix(in srgb, var(--ui-red) 85%, #000); }
 :root[data-theme="dark"] .ui-btn-danger-solid { color: #1a0d0c; }
+/* — New Load popup, one-page layout (components/LoadFormDialog.tsx, release 1.18):
+   pickup, delivery and freight side by side under customer, tender and truck. — */
+.ui-dialog.is-large.nlf { width: min(1320px, calc(100% - 48px)); height: min(900px, calc(100vh - 48px)); }
+.nlf .ui-dialog-body { gap: 18px; }
+.nlf .ui-field { gap: 4px; }
+.nlf .ui-field-label { font-weight: 500; }
+.nlf .ui-input { height: 32px; }
+.nlf .ui-input:disabled { opacity: 0.55; cursor: not-allowed; }
+.nlf input[type="datetime-local"].ui-input { padding: 0 6px; font-size: 11.5px; font-variant-numeric: tabular-nums; cursor: pointer; }
+/* No calendar icon (it does not fit the narrow date boxes); a click opens the picker instead. */
+.nlf input[type="datetime-local"]::-webkit-calendar-picker-indicator { display: none; }
+.nlf-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 24px; align-items: start; }
+.nlf-grid > .nlf-freight { grid-row: span 2; }
+.nlf-grid > .ui-field.is-wide { grid-column: 1 / 3; }
+.nlf-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; container-type: inline-size; }
+/* A column too narrow for two date-and-time boxes side by side stacks them. */
+@container (max-width: 329px) {
+  .nlf-pair.is-dates { grid-template-columns: minmax(0, 1fr); }
+}
+.nlf-title { font-size: 14px; font-weight: 600; }
+.nlf-sub { margin-bottom: -4px; font-size: 12px; font-weight: 600; color: var(--ui-text-2); }
+.nlf-gap { height: 4px; }
+.nlf-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
+.nlf-pair.is-zip { grid-template-columns: minmax(0, 1fr) 96px; }
+.nlf-affix { position: relative; display: block; }
+.nlf-affix > span { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); font-size: 12px; color: var(--ui-muted); pointer-events: none; }
+.nlf-affix .ui-input { padding-right: 34px; }
+.nlf-affix.is-prefix > span { right: auto; left: 12px; }
+.nlf-affix.is-prefix .ui-input { padding-left: 24px; padding-right: 12px; }
+.nlf-num { text-align: right; font-variant-numeric: tabular-nums; }
+.nlf-facts { display: flex; flex-direction: column; gap: 6px; margin: 0; padding-top: 18px; font-size: 12px; }
+.nlf-facts div { display: flex; justify-content: space-between; gap: 8px; }
+.nlf-facts dt { color: var(--ui-muted); }
+.nlf-facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.nlf-hazmat { margin-top: 4px; font-size: 13px; font-weight: 600; }
+.nlf-un { display: flex; align-items: flex-start; gap: 8px; }
+.nlf-un-list { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.nlf-un.is-invalid .ui-input { border-color: var(--ui-red); }
+.nlf-add {
+  flex: none; width: 24px; height: 24px; margin-top: 5px; padding: 0; font: inherit; font-size: 16px; line-height: 1;
+  color: var(--ui-text-2); background: none; border: 1px solid var(--ui-border); border-radius: 999px; cursor: pointer;
+}
+.nlf-add:hover:not(:disabled) { color: var(--ui-primary); border-color: var(--ui-primary); }
+.nlf-add:disabled { opacity: 0.4; cursor: not-allowed; }
+textarea.ui-input.nlf-notes { min-height: 150px; }
+/* Stops page: each stop as a summary (facility, address, when) that opens into its fields. */
+.nlf-stops { display: flex; flex-direction: column; max-width: 440px; }
+.nlf-stop-item { display: flex; flex-direction: column; gap: 8px; padding: 18px 0; border-bottom: 1px solid var(--ui-border); }
+.nlf-stop-item:first-child { padding-top: 0; }
+.nlf-stop-item:last-child { border-bottom: 0; }
+.nlf-stop-head { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
+.nlf-stop-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 2px 0 2px 16px;
+  font: inherit; font-size: 13px; line-height: 18px; color: var(--ui-text-2); text-align: left;
+  background: none; border: 0; border-left: 1px solid var(--ui-border); cursor: pointer;
+}
+.nlf-stop-card strong { color: var(--ui-text); font-weight: 600; }
+.nlf-stop-card:hover, .nlf-stop-card.is-open { border-left-color: var(--ui-primary); }
+.nlf-stop-card:hover strong { color: var(--ui-primary); }
+.nlf-stop-when { margin-top: 14px; font-weight: 600; }
+.nlf-stop-empty { color: var(--ui-muted); }
+.nlf-stop-edit { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding: 14px 16px; border: 1px solid var(--ui-border); border-radius: 12px; }
+.ui-btn.nlf-add-stop { align-self: flex-start; min-width: 170px; justify-content: center; border-radius: 999px; }
+.nlf-foot { border-top: 0; }
+@media (max-width: 1000px) {
+  .nlf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nlf-grid > .nlf-freight { grid-row: auto; }
+  .nlf-grid > .ui-field.is-wide { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+  .nlf-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 .ui-dialog.is-confirm { width: min(460px, calc(100% - 48px)); min-height: 0; }
 .ui-dialog.is-confirm .ui-dialog-body { gap: 12px; padding: 24px 28px 8px; }
 .ui-dialog.is-confirm .ui-dialog-foot { border-top: 0; padding: 16px 28px 24px; }
