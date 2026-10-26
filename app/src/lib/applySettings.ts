@@ -2,6 +2,7 @@ import type { Settings } from '../data/settings';
 import { DISPATCHERS, TERMINALS } from '../data/fleet';
 import { BILLING, COMPANY, FACTORING } from '../data/invoicing';
 import { CARRIERS, USER } from '../data/mock';
+import { isLive } from './releases';
 import { getSettings, numSetting, subscribeSettings } from './settingsStore';
 import { applyTheme } from './theme';
 
@@ -43,6 +44,9 @@ function apply(s: Settings) {
   applyTheme(dark ? 'dark' : 'light');
   if (a.accent === 'Blue') delete root.dataset.accent;
   else root.dataset.accent = a.accent.toLowerCase();
+  // Release 1.20: white behind the cards, like the top bar.
+  if (isLive('white-pages')) root.dataset.pages = 'white';
+  else delete root.dataset.pages;
   root.style.setProperty('--ui-zoom', a.textSize === 'Small' ? '0.92' : a.textSize === 'Large' ? '1.1' : '1');
   if (a.density === 'Compact') root.dataset.density = 'compact';
   else delete root.dataset.density;

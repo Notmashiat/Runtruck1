@@ -301,6 +301,21 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.20',
+    date: '2026-10-26',
+    title: 'White pages',
+    changes: [
+      {
+        id: 'white-pages', kind: 'Updated', section: 'Everywhere', title: 'The page behind the cards is white, like the top bar',
+        details: 'In light mode every page has a white background, the same as the top bar with the search, instead of light grey. Cards, the dashboard widgets, the tab bars and the Settings panels have a thin grey outline so they still stand apart. Dark mode is unchanged.',
+      },
+      {
+        id: 'loads-stage-title', kind: 'Updated', section: 'Loads', title: 'The Loads list is headed by its pipeline stage',
+        details: 'On the Loads page the list says which stage it shows, centred above it: Booked Loads, Dispatched Loads, En Route Loads, Delivered Loads, Invoiced Loads or Complete Loads, instead of a count such as "1 load". A search still says how many loads match.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

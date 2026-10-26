@@ -80,6 +80,9 @@ export function LoadsPage() {
   ];
 
   const countText = searching ? `${rows.length} matching “${query}”` : `${rows.length} load${rows.length === 1 ? '' : 's'}`;
+  // Release 1.20: the list on a pipeline stage is headed by the stage ("Booked Loads"), centred.
+  const stageTitle = pipeline && !searching && isLive('loads-stage-title');
+  const listTitle = stageTitle ? `${stage.replace(/\b\w/g, (c) => c.toUpperCase())} Loads` : countText;
 
   const filter = (
     <div className="ui-filter">
@@ -120,7 +123,7 @@ export function LoadsPage() {
       {pipeline && stages}
       <Kpis items={kpis} />
 
-      <Card flush title={countText} action={pipeline ? undefined : filter}>
+      <Card flush title={listTitle} className={stageTitle ? 'is-title-center' : ''} action={pipeline ? undefined : filter}>
         <table className="ui-table">
           <thead>
             <tr>

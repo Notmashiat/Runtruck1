@@ -260,6 +260,9 @@
 .ui-card { background: var(--ui-card); border-radius: 16px; overflow: hidden; }
 .ui-card-head { display: flex; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--ui-border); }
 .ui-card-title { font-size: 15px; font-weight: 600; }
+/* A centred title with nothing beside it (the Loads list on a pipeline stage). */
+.ui-card.is-title-center .ui-card-title { flex: 1; text-align: center; }
+.ui-card.is-title-center .ui-card-title + div { display: none; }
 .ui-card-body { padding: 20px 24px; }
 .ui-card-flush { overflow-x: auto; }
 .ui-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; align-items: start; }
@@ -390,6 +393,15 @@
 .ui-dialog-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .ui-dialog-main > .ui-dialog-body { flex: 1; }
 .ui-dialog-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 32px; border-top: 1px solid var(--ui-border); }
+/* — White pages (release 1.20): in light mode the area behind the cards is
+   white like the top bar (lib/applySettings.ts sets data-pages="white"), so
+   the cards that had no edge get a hairline outline to keep their shape. — */
+:root[data-pages="white"]:not([data-theme="dark"]) .ui-shell { --ui-bg: #ffffff; }
+:root[data-pages="white"]:not([data-theme="dark"]) :is(.ui-tabs, .ui-kpi, .ui-card, .dash-card, .dash-empty-all, .set-nav, .set-group) {
+  outline: 1px solid var(--ui-border); outline-offset: -1px;
+}
+:root[data-pages="white"]:not([data-theme="dark"]) .drv-partner { background: var(--ui-expand); }
+
 /* Narrow screens: the section menu becomes a scrolling strip above the form. */
 @media (max-width: 760px) {
   .ui-dialog.is-large { flex-direction: column; width: calc(100% - 24px); height: calc(100vh - 24px); }
