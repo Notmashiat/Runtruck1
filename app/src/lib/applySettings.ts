@@ -2,7 +2,6 @@ import type { Settings } from '../data/settings';
 import { DISPATCHERS, TERMINALS } from '../data/fleet';
 import { BILLING, COMPANY, FACTORING } from '../data/invoicing';
 import { CARRIERS, USER } from '../data/mock';
-import { isLive } from './releases';
 import { getSettings, numSetting, subscribeSettings } from './settingsStore';
 import { applyTheme } from './theme';
 
@@ -44,13 +43,7 @@ function apply(s: Settings) {
   applyTheme(dark ? 'dark' : 'light');
   if (a.accent === 'Blue') delete root.dataset.accent;
   else root.dataset.accent = a.accent.toLowerCase();
-  // Release 1.20: the lavender light palette, and every text size a step
-  // smaller (Default is what Small was).
-  const v120 = isLive('palette-1-20');
-  if (v120) delete root.dataset.palette;
-  else root.dataset.palette = 'classic';
-  const zoom = v120 ? { Small: '0.85', Default: '0.92', Large: '1' } : { Small: '0.92', Default: '1', Large: '1.1' };
-  root.style.setProperty('--ui-zoom', zoom[a.textSize] ?? '1');
+  root.style.setProperty('--ui-zoom', a.textSize === 'Small' ? '0.92' : a.textSize === 'Large' ? '1.1' : '1');
   if (a.density === 'Compact') root.dataset.density = 'compact';
   else delete root.dataset.density;
 }
