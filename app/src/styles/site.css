@@ -39,7 +39,7 @@
 .mk-nav nav a { padding: 7px 12px; font-size: 14px; font-weight: 500; color: var(--ui-text-2); border-radius: 999px; }
 .mk-nav nav a:hover { color: var(--ui-text); background: var(--ui-hover); }
 .mk a.ui-btn { text-decoration: none; }
-.mk a.ui-btn-primary { color: var(--ui-on-primary); }
+.mk a.ui-btn-primary { color: var(--ui-on-button); }
 .mk-btn-lg { height: 46px; padding: 0 26px; font-size: 15px; }
 .mk-btn-block { width: 100%; justify-content: center; height: 42px; }
 

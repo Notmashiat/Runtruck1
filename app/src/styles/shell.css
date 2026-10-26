@@ -1,10 +1,55 @@
 /* RunTruck app shell — the card-based look (light or dark) of the operations app
-   (everything under /app). The marketing site keeps industry.css. Every
-   colour is a token here so <html data-theme="dark"> can swap the palette. */
+   (everything under /app; the marketing page uses these tokens too). Every
+   colour is a token here so <html data-theme="dark"> can swap the palette.
+   Light palette from release 1.20: background #e6e5e7, main buttons #b6b6d5,
+   expanded rows #e9e3f1, lines #757179, text #0e0f23. */
 
 :root {
-  --ui-bg: #edf0f5;
+  --ui-bg: #e6e5e7;
   --ui-card: #ffffff;
+  --ui-border: #757179;
+  --ui-row: #757179;
+  --ui-thead: #e6e5e7;
+  --ui-expand: #e9e3f1;
+  --ui-hover: #f2f1f3;
+  --ui-tab-hover: #f4f1f8;
+  --ui-row-hover: #f7f5fa;
+  --ui-filter-bg: #e6e5e7;
+  --ui-track: #e6e5e7;
+  --ui-dash: #757179;
+  --ui-text: #0e0f23;
+  --ui-text-2: #45444f;
+  --ui-muted: #66636b;
+  --ui-primary: #1e5eff;
+  --ui-primary-hover: #164bd6;
+  --ui-primary-soft: #dce6ff;
+  --ui-on-primary: #ffffff;
+  /* Main buttons (Create, Save, + New Load). Links and highlights stay --ui-primary. */
+  --ui-button: #b6b6d5;
+  --ui-button-hover: #a3a3c9;
+  --ui-on-button: #0e0f23;
+  --ui-amber: #a05a00;
+  --ui-amber-soft: #fff1d6;
+  --ui-orange: #e86a10;
+  --ui-green: #167a3b;
+  --ui-green-soft: #dff5e6;
+  --ui-gray-soft: #e6e5e7;
+  --ui-nav-pill: #ffffff;
+  --ui-red: #b42318;
+  --ui-red-soft: #fdecea;
+  --ui-purple: #6d3fd1;
+  --ui-purple-soft: #efe8fd;
+  --ui-teal: #0f766e;
+  --ui-teal-soft: #dcf5f1;
+  --ui-shadow: rgba(14, 15, 35, 0.1);
+  --ui-overlay: rgba(14, 15, 35, 0.45);
+}
+
+/* The light palette before release 1.20 (lib/applySettings.ts sets
+   data-palette="classic" for a company that does not have it yet). Dark mode
+   below has its own colours either way. */
+:root[data-palette="classic"] {
+  --ui-bg: #edf0f5;
   --ui-border: #e3e7ee;
   --ui-row: #eceff5;
   --ui-thead: #dde2eb;
@@ -18,25 +63,12 @@
   --ui-text: #111827;
   --ui-text-2: #4b5563;
   --ui-muted: #6b7280;
-  --ui-primary: #1e5eff;
-  --ui-primary-hover: #164bd6;
-  --ui-primary-soft: #dce6ff;
-  --ui-on-primary: #ffffff;
-  --ui-amber: #a05a00;
-  --ui-amber-soft: #fff1d6;
-  --ui-orange: #e86a10;
-  --ui-green: #167a3b;
-  --ui-green-soft: #dff5e6;
   --ui-gray-soft: #eef0f4;
-  --ui-nav-pill: #ffffff;
-  --ui-red: #b42318;
-  --ui-red-soft: #fdecea;
-  --ui-purple: #6d3fd1;
-  --ui-purple-soft: #efe8fd;
-  --ui-teal: #0f766e;
-  --ui-teal-soft: #dcf5f1;
   --ui-shadow: rgba(17, 24, 39, 0.1);
   --ui-overlay: rgba(17, 24, 39, 0.45);
+  --ui-button: var(--ui-primary);
+  --ui-button-hover: var(--ui-primary-hover);
+  --ui-on-button: var(--ui-on-primary);
 }
 
 :root[data-theme="dark"] {
@@ -60,6 +92,9 @@
   --ui-primary-hover: #7aa2ff;
   --ui-primary-soft: #1f2f52;
   --ui-on-primary: #0f141c;
+  --ui-button: var(--ui-primary);
+  --ui-button-hover: var(--ui-primary-hover);
+  --ui-on-button: var(--ui-on-primary);
   --ui-amber: #f2b45c;
   --ui-amber-soft: #3a2b12;
   --ui-orange: #f5913e;
@@ -200,8 +235,8 @@
   background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 999px; cursor: pointer;
 }
 .ui-btn:hover { background: var(--ui-hover); }
-.ui-btn-primary { color: var(--ui-on-primary); background: var(--ui-primary); border-color: var(--ui-primary); }
-.ui-btn-primary:hover { background: var(--ui-primary-hover); border-color: var(--ui-primary-hover); }
+.ui-btn-primary { color: var(--ui-on-button); background: var(--ui-button); border-color: var(--ui-button); }
+.ui-btn-primary:hover { background: var(--ui-button-hover); border-color: var(--ui-button-hover); }
 /* A second highlighted action next to the primary one (Create account beside
    Create company): filled like it, in teal, so the two are told apart at a glance. */
 .ui-btn-teal { color: var(--ui-on-primary); background: var(--ui-teal); border-color: var(--ui-teal); }

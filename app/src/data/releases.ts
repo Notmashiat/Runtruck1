@@ -301,6 +301,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.20',
+    date: '2026-10-25',
+    title: 'New colours and smaller text',
+    changes: [
+      {
+        id: 'palette-1-20', kind: 'Updated', section: 'Everywhere', title: 'A lavender-grey light palette, and text a step smaller',
+        details: 'In light mode the app and the public page use a new palette: a #E6E5E7 background, #B6B6D5 main buttons (Create, Save, + New Load) with dark text, #E9E3F1 behind an opened row, #757179 lines and outlines, and #0E0F23 text. Links and highlights stay blue, and dark mode is unchanged. Text is a step smaller everywhere: Default in Settings › Appearance is now what Small was, and Small and Large are a step smaller too.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
