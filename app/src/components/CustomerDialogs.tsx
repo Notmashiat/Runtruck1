@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import type { BillDocument } from '../data/bills';
 import {
-  CUSTOMER_EQUIPMENT, CUSTOMER_NEEDS, CUSTOMER_PAY, CUSTOMER_TERMS, CUSTOMER_TYPES, INACTIVE_REASONS, INDUSTRIES, INVOICE_DELIVERY, STANDINGS,
+  CREDIT_STATUSES, CUSTOMER_EQUIPMENT, CUSTOMER_NEEDS, CUSTOMER_PAY, CUSTOMER_TERMS, CUSTOMER_TYPES, INACTIVE_REASONS, INDUSTRIES, INVOICE_DELIVERY, STANDINGS,
   blankCustomerForm, customerFromForm, customerToForm, nextCustomerId, type CustomerRecord,
 } from '../data/customers';
 import type { FormValues } from '../data/fleet';
@@ -67,6 +67,7 @@ function customerSections(takenNames: string[], reps: string[]): SectionSpec[] {
         { key: 'zip', label: 'ZIP', required: true, check: ZIP },
         { key: 'terms', label: 'Payment terms', type: 'select', required: true, options: CUSTOMER_TERMS },
         { key: 'creditLimit', label: 'Credit limit ($)', type: 'number', help: 'Warns when open invoices go over it.', check: (value) => (Number(value.replace(/[$,]/g, '')) >= 0 ? null : 'Cannot be negative') },
+        { key: 'credit', label: 'Credit status', type: 'select', required: true, options: [...CREDIT_STATUSES], help: 'On credit hold, loads can be created but not dispatched.' },
         { key: 'payMethod', label: 'They pay by', type: 'select', required: true, options: CUSTOMER_PAY },
         { key: 'invoiceDelivery', label: 'Send invoices by', type: 'select', required: true, options: INVOICE_DELIVERY },
         { key: 'podRequired', label: 'POD required with invoice', type: 'select', required: true, options: ['Yes', 'No'] },

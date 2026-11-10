@@ -1,668 +1,1625 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useAppShell } from '../context/AppShellContext';
-import { money } from '../data/accounting';
-import { facilityFor, isRoad, stopHint, type Facility } from '../data/facilities';
-import { CARRIERS, CUSTOMERS, USER, type Load } from '../data/mock';
-import { isLive } from '../lib/releases';
-import { AttachDialog } from './AttachDialog';
-import { LoadFormDialog } from './LoadFormDialog';
-import { Choice, ConfirmDelete, Field, Head, Stat } from './LoadFormBits';
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
 import {
-  DOCUMENTS, EQUIPMENT, FREIGHT_CLASSES, INITIAL, LTL_SERVICES, MODES, PACKAGING, TERMS, coveredStatus, draftFromLoad, emptyStop, nextId,
-  num, positive, signedMoney, toLoad, type Draft, type StopDraft,
-} from './loadForm';
+  faArrowDown, faArrowRight, faArrowUp, faArrowUpFromBracket, faBox, faBoxOpen, faCheck, faChevronDown, faCircleCheck, faCircleExclamation,
+  faCircleInfo, faCirclePlus, faCloudArrowUp, faDollarSign, faExclamation, faFolderOpen, faHashtag, faIdCard, faLayerGroup, faLocationDot, faLock,
+  faMagnifyingGlass, faNoteSticky, faPlus, faSnowflake, faTriangleExclamation, faTruck, faWarehouse, faXmark, type IconDefinition,
+} from '@fortawesome/free-solid-svg-icons';
+import {
+  faCircle, faFileImage, faFilePdf, faLightbulb, faMessage, faPaperPlane, faSnowflake as faSnowflakeRegular, faTrashCan,
+} from '@fortawesome/free-regular-svg-icons';
+import { useAppShell } from '../context/AppShellContext';
+import type { BillDocument } from '../data/bills';
+import type { CustomerRecord } from '../data/customers';
+import { FACILITY_BLANK, facilityFor, facilityFromForm, isRoad, type Facility } from '../data/facilities';
+import { nextId as nextRecordId, type FleetTrailer, type FleetTruck } from '../data/fleet';
+import { CARRIERS, type Carrier, type Load } from '../data/mock';
+import { fileSize, readAttachment } from '../lib/attachments';
+import { usePersisted } from '../lib/persist';
+import { toast } from '../lib/toast';
+import { DispatchTextDialog } from './DispatchTextDialog';
+import { Fa } from './Fa';
+import { INITIAL, chargesTotal, draftFromLoad, emptyStop, nextId, toLoad, type Draft, type StopDraft } from './loadForm';
+import { COUNTED, chargeProblem, checksFor, fmtDay, isPickup, rulesFor, schedOf, type Rule, type SectionId } from './newLoadRules';
 
-type Section = 'Load info' | 'Stops' | 'Freight' | 'LTL' | 'Carrier' | 'Driver & equipment' | 'Rates' | 'Documents' | 'Notes' | 'Review';
-const SECTIONS: Section[] = ['Load info', 'Stops', 'Freight', 'LTL', 'Carrier', 'Driver & equipment', 'Rates', 'Documents', 'Notes', 'Review'];
+// New Load / Edit load (release 1.21), built from the Loadpopupv_2 design:
+// one scrolling form in sections (document, load details, pickup, delivery,
+// freight & equipment, rate, LTL / partial, truck & driver, notes) with a
+// section menu on the left and a live summary and checklist on the right.
 
-type Errors = Partial<Record<Section, string[]>>;
+const SECTIONS: { id: SectionId; label: string; icon: IconDefinition }[] = [
+  { id: 'document', label: 'Document', icon: faCloudArrowUp },
+  { id: 'load', label: 'Load details', icon: faHashtag },
+  { id: 'pickup', label: 'Pickup', icon: faArrowUpFromBracket },
+  { id: 'delivery', label: 'Delivery', icon: faLocationDot },
+  { id: 'freight', label: 'Freight & equipment', icon: faBox },
+  { id: 'rate', label: 'Rate', icon: faDollarSign },
+  { id: 'ltl', label: 'LTL / Partial', icon: faLayerGroup },
+  { id: 'truck', label: 'Truck & driver', icon: faTruck },
+  { id: 'notes', label: 'Notes', icon: faNoteSticky },
+];
+const EQUIP_TYPES = ['Dry Van', 'Reefer', 'Flatbed', 'Step Deck', 'Conestoga', 'Power Only', 'Box Truck'];
+const LENGTHS = ['53 ft', '48 ft', '40 ft', '26 ft'];
+const QTY_UNITS = ['Pallets', 'Cases', 'Pieces', 'Crates'];
+const HAZ_CLASSES = [
+  '1 – Explosives', '2.1 – Flammable gas', '2.2 – Non-flammable gas', '2.3 – Toxic gas', '3 – Flammable liquid', '4 – Flammable solid',
+  '5 – Oxidizer', '6 – Toxic / infectious', '7 – Radioactive', '8 – Corrosive', '9 – Miscellaneous',
+];
+const CHARGE_TYPES = ['Detention', 'Lumper', 'Layover', 'Stop-off', 'TONU', 'Driver assist', 'Tarp', 'Pallet exchange', 'Scale ticket', 'Other'];
+const DOC_CATS = ['Rate confirmation', 'BOL', 'POD', 'Lumper receipt', 'Scale ticket', 'Detention receipt', 'Invoice', 'Customs', 'Other'];
+const MAX_FILE = 10 * 1024 * 1024;
+const ACCEPT = '.pdf,.png,.jpg,.jpeg';
+const RATE_CON = 'Rate confirmation';
 
-// What still has to be filled in before the load can be created, per section.
-function validate(d: Draft): Errors {
-  const e: Errors = {};
-  const add = (s: Section, msg: string) => (e[s] ??= []).push(msg);
+// — small helpers —
 
-  if (!d.customer) add('Load info', 'Customer');
-  if (!d.equipment) add('Load info', 'Equipment');
-  if (!d.stops.some((s) => s.kind === 'Pickup')) add('Stops', 'At least one pickup');
-  if (!d.stops.some((s) => s.kind === 'Delivery')) add('Stops', 'At least one delivery');
-  d.stops.forEach((s, i) => {
-    const n = `Stop ${i + 1}`;
-    if (!s.facility.trim()) add('Stops', `${n}: facility`);
-    if (!s.address.trim() || !s.city.trim() || !s.state.trim()) add('Stops', `${n}: street, city and state`);
-    if (!s.date) add('Stops', `${n}: date`);
-    const prev = d.stops[i - 1];
-    if (s.date && prev?.date && s.date < prev.date) add('Stops', `${n}: date is before stop ${i}`);
-  });
-  if (!d.commodity.trim()) add('Freight', 'Commodity');
-  if (!positive(d.weight)) add('Freight', 'Weight');
-  if (d.hazmat && !d.unNumber.trim()) add('Freight', 'UN number for hazmat');
-  if (d.mode === 'LTL') {
-    if (!d.freightClass) add('LTL', 'Freight class');
-    if (!positive(d.handlingUnits)) add('LTL', 'Handling units');
-  }
-  if (d.brokered) {
-    if (!d.carrier.trim()) add('Carrier', 'Carrier');
-    if (!positive(d.carrierRate)) add('Carrier', 'Carrier rate');
-  }
-  if (!positive(d.lineHaul)) add('Rates', 'Line haul rate');
-  return e;
+const strOf = (v: unknown) => (typeof v === 'string' ? v : '');
+const amountOf = (s: string) => parseFloat(s.replace(/[^\d.-]/g, '')) || 0;
+const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtMoney = (s: string) => { const n = parseFloat(s.replace(/[^\d.]/g, '')); return Number.isNaN(n) ? '' : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+const fmtInt = (s: string) => { const n = parseFloat(s.replace(/[^\d.]/g, '')); return Number.isNaN(n) ? '' : Math.round(n).toLocaleString('en-US'); };
+const plain = (s: string) => { const n = parseFloat(s.replace(/[^\d.-]/g, '')); return Number.isNaN(n) ? '' : String(n); };
+const isImage = (name: string) => /\.(png|jpe?g)$/i.test(name);
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function guessCat(name: string) {
+  const n = name.toLowerCase();
+  if (/bol|lading/.test(n)) return 'BOL';
+  if (/pod|proof/.test(n)) return 'POD';
+  if (/lumper/.test(n)) return 'Lumper receipt';
+  if (/scale/.test(n)) return 'Scale ticket';
+  if (/detention/.test(n)) return 'Detention receipt';
+  if (/invoice/.test(n)) return 'Invoice';
+  if (/rate.?con/.test(n)) return 'Rate confirmation';
+  return '';
 }
 
-export interface NewLoadDialogProps {
-  // Given: the dialog edits this load (Save changes, Delete load). Absent: a new load.
+// The text with the part that matches the search highlighted.
+function hl(text: string, q: string): ReactNode {
+  if (!q) return text;
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return text;
+  return <>{text.slice(0, i)}<mark>{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>;
+}
+
+// A trailer's kind as the design shows it: 'Reefer · 53 ft' → '53 Feet Reefer'.
+function trailerParts(t?: FleetTrailer) {
+  if (!t) return { type: '', text: '' };
+  const [type = '', size = ''] = t.kind.split('·').map((x) => x.trim());
+  const ft = size.match(/(\d+)\s*ft/i);
+  return { type, text: ft ? `${ft[1]} Feet ${type}` : t.kind };
+}
+
+// An older load's equipment ('Dry van, 53 ft') as the design's type and length.
+function splitEquipment(equip: string) {
+  if (!equip || equip === '—') return { type: '', length: '' };
+  const first = equip.split(',')[0].trim().toLowerCase();
+  const type = EQUIP_TYPES.find((t) => t.toLowerCase() === first) ?? EQUIP_TYPES.find((t) => first.startsWith(t.toLowerCase().split(' ')[0])) ?? '';
+  const ft = equip.match(/(\d+)\s*ft/i);
+  return { type, length: ft ? `${ft[1]} ft` : '' };
+}
+
+// The entry the popup starts from: blank, or the load being edited (numbers
+// shown formatted, older fields mapped onto the design's).
+function startingDraft(load: Load | undefined, customers: CustomerRecord[]): Draft {
+  if (!load) return { ...INITIAL, stops: [{ ...emptyStop('Pickup'), sched: 'fcfs' }, { ...emptyStop('Delivery'), sched: 'fcfs' }], charges: [], docList: [] };
+  const d = draftFromLoad(load);
+  const eq = splitEquipment(d.equipment);
+  const equipment = EQUIP_TYPES.includes(d.equipment) ? d.equipment : eq.type;
+  const customer = customers.find((c) => c.id === d.customerId) ?? customers.find((c) => c.name === d.customer);
+  return {
+    ...d,
+    customerId: customer?.id ?? '',
+    equipment,
+    trailerLength: eq.length || d.trailerLength || '53 ft',
+    tempOn: d.tempOn || (/^reefer/i.test(d.equipment) && d.temp.trim() !== ''),
+    temp: d.temp.replace(/[^\d.-]/g, ''),
+    weight: fmtInt(d.weight),
+    value: fmtInt(d.value),
+    lineHaul: fmtMoney(d.lineHaul),
+    fuel: fmtMoney(d.fuel),
+    unNumber: d.unNumber.replace(/\D/g, '').slice(0, 4),
+    stops: d.stops.map((s) => ({ ...s, sched: s.sched ?? (s.appt ? 'appt' : 'fcfs') })),
+    charges: d.charges ?? [],
+    docList: d.docList ?? [],
+  };
+}
+
+// — pieces —
+
+function Seg({ name, value, options, onChange, className = '', label }: {
+  name: string; value: string; options: { value: string; label: string; aria?: string }[]; onChange: (v: string) => void; className?: string; label: string;
+}) {
+  return (
+    <div className={`nl-rseg ${className}`} role="radiogroup" aria-labelledby={label}>
+      {options.map((o) => (
+        <label key={o.value}>
+          <input type="radio" name={name} value={o.value} checked={value === o.value} aria-label={o.aria} onChange={() => onChange(o.value)} />
+          <span className="nl-rseg-btn">{o.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function SecHead({ title, sub, right }: { title: string; sub: string; right?: ReactNode }) {
+  return (
+    <div className="nl-sec-head">
+      {right ? <div className="nl-sec-headrow"><h2>{title}</h2>{right}</div> : <h2>{title}</h2>}
+      <p>{sub}</p>
+    </div>
+  );
+}
+
+const Req = () => <span className="nl-req" aria-hidden="true">*</span>;
+
+interface ComboProps<T> {
+  id: string;
+  value: string;
+  onQuery: (q: string) => void;
+  items: (q: string) => T[];
+  keyOf: (item: T) => string;
+  render: (item: T, q: string) => ReactNode;
+  onPick: (item: T) => void;
+  placeholder: string;
+  listLabel: string;
+  none: (q: string) => string;
+  icon: IconDefinition;
+  padLeft?: 'nl-pl-9' | 'nl-pl-10';
+  between?: boolean;
+  invalid?: boolean;
+  describedBy?: string;
+  required?: boolean;
+  extraClass?: string;
+  after?: ReactNode;
+  // False: the box shows a chosen name, so the list is not narrowed by it.
+  searchFromValue?: boolean;
+}
+
+// A search box with a list under it (customer, carrier, LTL load, truck):
+// typing narrows the list, arrows and Enter or a click pick, Escape closes it.
+function Combo<T>(p: ComboProps<T>) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const q = p.value.trim();
+  const query = p.searchFromValue === false ? '' : q;
+  const items = open ? p.items(query) : [];
+  const listId = `nl-${p.id}-list`;
+  const shownActive = Math.min(active, items.length - 1);
+
+  useEffect(() => {
+    if (open && shownActive >= 0) document.getElementById(`${listId}-${shownActive}`)?.scrollIntoView({ block: 'nearest' });
+  }, [open, shownActive, listId]);
+
+  const pick = (it: T) => {
+    setOpen(false);
+    p.onPick(it);
+  };
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!open) { setActive(0); setOpen(true); } else setActive((a) => Math.min(a + 1, items.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (open) setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+      if (open && items[shownActive]) { e.preventDefault(); pick(items[shownActive]); }
+    } else if (e.key === 'Escape' && open) {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="nl-rel">
+      <span className="nl-in-ico"><Fa icon={p.icon} /></span>
+      <input
+        ref={inputRef} id={`nl-${p.id}`} type="text" role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={listId}
+        aria-required={p.required || undefined} aria-invalid={p.invalid ? 'true' : 'false'} aria-describedby={p.describedBy}
+        aria-activedescendant={open && shownActive >= 0 && items.length ? `${listId}-${shownActive}` : undefined}
+        className={`nl-inp ${p.padLeft ?? 'nl-pl-9'}${p.extraClass ? ` ${p.extraClass}` : ''}`} placeholder={p.placeholder} autoComplete="off"
+        value={p.value}
+        onChange={(e) => { p.onQuery(e.target.value); setActive(0); setOpen(true); }}
+        onClick={() => { if (!open) { setActive(-1); setOpen(true); } }}
+        onKeyDown={onKeyDown}
+        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+      />
+      {p.after}
+      {open && (
+        <ul id={listId} role="listbox" aria-label={p.listLabel} className="nl-list" onMouseDown={(e) => e.preventDefault()}>
+          {items.length ? items.map((it, i) => (
+            <li
+              key={p.keyOf(it)} id={`${listId}-${i}`} role="option" aria-selected={i === shownActive}
+              className={`nl-opt-row${p.between ? ' is-between' : ''}${i === shownActive ? ' is-active' : ''}`}
+              onClick={() => pick(it)}
+            >
+              {p.render(it, query)}
+            </li>
+          )) : <li className="nl-opt-none">{p.none(q)}</li>}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// — the popup —
+
+interface NewLoadDialogProps {
+  // Given: the popup edits this load (Save changes, Delete load). Absent: a new load.
   load?: Load;
   onClose: () => void;
   onSaved?: (id: string) => void;
   onDeleted?: () => void;
 }
 
-// The New Load / Edit load popup. From release 1.18 it is the one-page layout
-// (LoadFormDialog); before that, the step-by-step one below.
-export function NewLoadDialog(props: NewLoadDialogProps) {
-  return isLive('load-form-v2') ? <LoadFormDialog {...props} /> : <ClassicLoadDialog {...props} />;
-}
-
-// The New Load / Edit load popup: the same shell as Settings, sized for a full
-// load entry. Required fields are checked when the load is saved; sections with
-// something missing get a count in the menu and the dialog jumps to the first.
-function ClassicLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDialogProps) {
+export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
-  const bodyRef = useRef<HTMLElement>(null);
-  const { loads, addLoad, updateLoad, deleteLoad, drivers, trucks, trailers, facilities } = useAppShell();
-  // Truck stops and scales are not pickup or delivery sites.
-  const activeFacilities = facilities.filter((x) => !x.archived && !isRoad(x.type));
-  // Archived fleet records are kept on file but are not offered for new work.
-  const activeDrivers = drivers.filter((x) => !x.archived);
-  const activeTrucks = trucks.filter((x) => !x.archived);
-  const activeTrailers = trailers.filter((x) => !x.archived);
-  const [initial] = useState<Draft>(() => (load ? draftFromLoad(load) : INITIAL));
-  const [d, setD] = useState<Draft>(initial);
-  const [section, setSection] = useState<Section>('Load info');
-  const [showErrors, setShowErrors] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const scrollRef = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const shell = useAppShell();
+  const { loads, addLoad, updateLoad, deleteLoad, trucks, trailers, drivers, facilities, saveFacility } = shell;
   const editing = Boolean(load);
+  const customers = useMemo(() => shell.customers.filter((c) => c.status !== 'Inactive' || c.name === load?.customer), [shell.customers, load?.customer]);
+  const siteFacilities = facilities.filter((f) => !f.archived && !isRoad(f.type));
+  const activeTrucks = trucks.filter((t) => !t.archived);
+  const [savedCarriers, setSavedCarriers] = usePersisted<Carrier[]>('runtruck-carriers', [], (raw) =>
+    Array.isArray(raw) ? raw.filter((c): c is Carrier => Boolean(c) && typeof c.name === 'string' && typeof c.mc === 'string') : null);
+  const carrierList = useMemo(() => {
+    const seen = new Set<string>();
+    return [...CARRIERS.slice(1), ...savedCarriers].filter((c) => {
+      const k = c.name.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, [savedCarriers]);
+
+  const [loadNo] = useState(() => load?.id ?? nextId(loads));
+  const [initial] = useState(() => startingDraft(load, customers));
+  const [d, setD] = useState<Draft>(initial);
+  // Fields filled in for the user (tinted until edited).
+  const [auto, setAuto] = useState<Set<string>>(() => new Set());
+  const [touched, setTouched] = useState<Set<string>>(() => new Set());
+  const [submitted, setSubmitted] = useState(false);
+  const [confirm, setConfirm] = useState<null | 'discard' | 'delete'>(null);
+  const [carrierOpen, setCarrierOpen] = useState(initial.brokered);
+  const [carrierNew, setCarrierNew] = useState(false);
+  const [truckQuery, setTruckQuery] = useState('');
+  const [ltlQuery, setLtlQuery] = useState('');
+  const [dispatching, setDispatching] = useState(false);
+  const [textedAt, setTextedAt] = useState('');
+  const [events, setEvents] = useState<string[]>([]);
+  const [uploadError, setUploadError] = useState('');
+  const [over, setOver] = useState<'' | 'main' | 'more'>('');
+  const [current, setCurrent] = useState<SectionId>(editing ? 'load' : 'document');
+
+  const sections = SECTIONS.filter((s) => !editing || s.id !== 'document');
 
   useEffect(() => {
     const el = ref.current;
     if (el && !el.open) el.showModal();
+    titleRef.current?.focus({ preventScroll: true });
   }, []);
 
-  const errors = validate(d);
-  const dirty = JSON.stringify(d) !== JSON.stringify(initial);
-  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setD((prev) => ({ ...prev, [key]: value }));
-  // The document the attach popup is for.
-  const [attachingDoc, setAttachingDoc] = useState<string | null>(null);
-  const setStop = (i: number, patch: Partial<StopDraft>) =>
-    setD((prev) => ({ ...prev, stops: prev.stops.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
-  const missing = (s: Section, msg: string) => showErrors && Boolean(errors[s]?.includes(msg));
-  // Picking a registered facility fills the stop's address and site contact.
-  const setFacility = (i: number, name: string) => {
-    const f = facilityFor(activeFacilities, name);
-    if (!f) {
-      setStop(i, { facility: name });
-      return;
+  // — updating the entry —
+  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((p) => ({ ...p, [k]: v }));
+  const setStop = (i: number, patch: Partial<StopDraft>) => setD((p) => ({ ...p, stops: p.stops.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
+  const unauto = (...keys: string[]) => setAuto((a) => {
+    if (!keys.some((k) => a.has(k))) return a;
+    const n = new Set(a);
+    keys.forEach((k) => n.delete(k));
+    return n;
+  });
+  const touch = (...ids: string[]) => setTouched((t) => {
+    const n = new Set(t);
+    ids.forEach((x) => n.add(x));
+    return n;
+  });
+  const cls = (key: string, base = 'nl-inp') => `${base}${auto.has(key) ? ' is-auto' : ''}`;
+
+  // — rules —
+  const customerPicked = Boolean(d.customerId && customers.some((c) => c.id === d.customerId));
+  const rules = rulesFor(d, { customerPicked });
+  const ruleById = new Map(rules.map((r) => [r.id, r]));
+  const shown = (r: Rule) => Boolean(r.result) && (submitted || touched.has(r.id));
+  const ruleOfInput = (key: string) => rules.find((r) => r.inputs.includes(key));
+  const invalid = (key: string) => {
+    const r = ruleOfInput(key);
+    return Boolean(r && shown(r) && (r.result?.bad ?? r.inputs).includes(key));
+  };
+  const errFor = (ruleId: string) => {
+    const r = ruleById.get(ruleId);
+    return r && shown(r) && r.result ? (
+      <p id={`nl-${ruleId}-err`} className="nl-err"><Fa icon={faCircleExclamation} /><span>{r.result.m}</span></p>
+    ) : null;
+  };
+  const describe = (key: string) => {
+    const r = ruleOfInput(key);
+    return r && shown(r) ? `nl-${r.id}-err` : undefined;
+  };
+  // Leaving a field marks its rule as touched (unless focus moves within the same rule).
+  const onBlurCapture = (e: FocusEvent<HTMLFormElement>) => {
+    const key = (e.target as HTMLElement).id?.replace(/^nl-/, '');
+    if (!key) return;
+    const next = (e.relatedTarget as HTMLElement | null)?.id?.replace(/^nl-/, '') ?? '';
+    const r = ruleOfInput(key);
+    if (r && !r.inputs.includes(next)) touch(r.id);
+  };
+
+  // — derived —
+  const customer = customers.find((c) => c.id === d.customerId);
+  const truck = activeTrucks.find((t) => t.unit === d.truck) ?? trucks.find((t) => t.unit === d.truck);
+  const trailerOf = (t?: FleetTruck) => (t ? trailers.find((x) => x.unit === strOf(t.details.trailer)) : undefined);
+  const truckTrailer = trailerParts(trailerOf(truck));
+  const phoneOf = (name: string) => (name ? strOf(drivers.find((x) => x.name === name)?.details.phone) : '');
+  const truckDriver = truck && truck.driver && truck.driver !== 'Unassigned' ? truck.driver : '';
+  const driverName = d.driver || truckDriver;
+  const charges = d.charges;
+  const chargeSum = chargesTotal(d);
+  const total = amountOf(d.lineHaul) + amountOf(d.fuel) + chargeSum;
+  const pickups = d.stops.map((s, i) => ({ s, i })).filter((x) => isPickup(x.s));
+  const deliveries = d.stops.map((s, i) => ({ s, i })).filter((x) => !isPickup(x.s));
+  const rateCon = d.files[RATE_CON] && d.docs[RATE_CON] === d.files[RATE_CON].name ? d.files[RATE_CON] : undefined;
+  const docsShown = Boolean(rateCon) || d.docList.length > 0;
+
+  // LTL loads a partial can ride with, and the space they have used.
+  const ltlLoads = useMemo(() => {
+    const pallets = (l: Load) => {
+      const f = l.form as Partial<Draft> | undefined;
+      return f && (f.packaging ?? 'Pallets') === 'Pallets' ? Math.round(amountOf(String(f.pieces ?? ''))) : 0;
+    };
+    return loads
+      .filter((l) => l.mode === 'Less than truckload' && l.id !== load?.id && !['Delivered', 'Needs POD'].includes(l.status))
+      .map((l) => {
+        const f = l.form as Partial<Draft> | undefined;
+        const ft = Number((f?.trailerLength || l.equip).match(/(\d+)\s*ft/i)?.[1] ?? 53);
+        const cap = Math.max(1, Math.round((26 * ft) / 53));
+        const used = pallets(l) + loads.filter((x) => x.id !== load?.id && (x.form as Partial<Draft> | undefined)?.ltlLoad === l.id).reduce((n, x) => n + pallets(x), 0);
+        return { load: l, space: `${used} of ${cap} pallets used`, date: l.pickupDate ? fmtDay(l.pickupDate) : l.pickup };
+      });
+  }, [loads, load?.id]);
+  const ltlLinked = ltlLoads.find((x) => x.load.id === d.ltlLoad);
+  const ltlGone = d.ltlLoad && !ltlLinked ? loads.find((l) => l.id === d.ltlLoad) : undefined;
+
+  // — sections: status, progress, checklist —
+  const counted = COUNTED.map((sec) => {
+    const rs = rules.filter((r) => r.section === sec);
+    const miss = rs.filter((r) => r.result);
+    return { sec, total: rs.length, miss: miss.length, err: miss.some(shown) };
+  });
+  const secDone = counted.filter((c) => c.miss === 0).length;
+  const remaining = counted.reduce((n, c) => n + c.miss, 0);
+  const checks = checksFor(d, rules);
+  const isDone = (ids: string[]) => ids.every((id) => !ruleById.get(id)?.result);
+  const checkDone = checks.filter((c) => isDone(c.rules));
+  const shownCheck = (ids: string[]) => ids.some((id) => { const r = ruleById.get(id); return r ? shown(r) : false; });
+
+  const statusOf = (id: SectionId): ReactNode => {
+    const done = <span className="nl-st-done"><Fa icon={faCheck} /><span className="nl-sr">complete</span></span>;
+    const opt = <span className="nl-st-opt">Optional</span>;
+    if (id === 'document') return docsShown ? done : opt;
+    if (id === 'notes') return opt;
+    if (id === 'truck') return d.truck ? <span className="nl-st-done"><Fa icon={faCheck} /><span className="nl-sr">connected</span></span> : opt;
+    const c = counted.find((x) => x.sec === id);
+    if (!c || c.miss === 0) return done;
+    if (c.err) return <span className="nl-st-err"><Fa icon={faExclamation} />{c.miss}</span>;
+    return <span className="nl-st-count">{c.total - c.miss}/{c.total}</span>;
+  };
+
+  // — navigation —
+  const goTo = (id: SectionId) => {
+    const el = document.getElementById(`nl-sec-${id}`);
+    const sc = scrollRef.current;
+    if (el && sc) sc.scrollTo({ top: el.offsetTop - 16, behavior: reducedMotion() ? 'auto' : 'smooth' });
+  };
+  const spy = () => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    let now: SectionId = sections[0].id;
+    for (const s of sections) {
+      const el = document.getElementById(`nl-sec-${s.id}`);
+      if (el && el.offsetTop - sc.scrollTop <= 140) now = s.id;
     }
-    const t = (k: string) => (typeof f.details[k] === 'string' ? (f.details[k] as string).trim() : '');
-    const pickup = d.stops[i].kind === 'Pickup';
-    const who = (pickup ? t('shipName') : t('recvName')) || t('shipName');
-    const phone = (pickup ? t('shipPhone') : t('recvPhone')) || t('shipPhone') || t('phone');
-    setStop(i, {
-      facility: f.name, address: t('street'), city: t('city'), state: t('state'), zip: t('zip'),
-      contact: d.stops[i].contact || [who, phone].filter(Boolean).join(' · '),
-    });
+    if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4) now = 'notes';
+    setCurrent(now);
   };
-  const knownFacility = (name: string): Facility | undefined => facilityFor(activeFacilities, name);
+  const focusKey = (key: string) => {
+    const el = document.getElementById(`nl-${key}`);
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
+  };
+  const focusRule = (r: Rule) => focusKey(r.result?.bad?.[0] ?? r.inputs[0]);
+  const later = (fn: () => void) => window.setTimeout(fn, 0);
+  // Opens a search box's list from outside (Change, Add carrier, clearing it):
+  // once it is on screen, focus it and click it as a person would.
+  const openCombo = (id: string) => later(() => {
+    const el = document.getElementById(`nl-${id}`);
+    el?.focus();
+    el?.click();
+  });
 
-  const go = (s: Section) => {
-    setSection(s);
-    bodyRef.current?.scrollTo({ top: 0 });
+  // — customer —
+  const pickCustomer = (c: CustomerRecord) => {
+    const filled: string[] = [];
+    if (!d.contactName.trim() && c.contact) filled.push('f-contact');
+    if (!d.contactEmail.trim() && c.email) filled.push('f-email');
+    setD((p) => ({
+      ...p, customer: c.name, customerId: c.id, terms: c.terms || p.terms, billTo: p.billTo || c.name,
+      contactName: p.contactName.trim() ? p.contactName : c.contact, contactEmail: p.contactEmail.trim() ? p.contactEmail : c.email,
+    }));
+    setAuto((a) => { const n = new Set(a); filled.forEach((k) => n.add(k)); return n; });
+    touch('customer');
+    later(() => focusKey(`s${pickups[0]?.i ?? 0}-facility`));
   };
-  // Back / Next skip LTL unless the load is LTL.
-  const step = (dir: 1 | -1) => {
-    let i = SECTIONS.indexOf(section) + dir;
-    if (SECTIONS[i] === 'LTL' && d.mode !== 'LTL') i += dir;
-    if (SECTIONS[i]) go(SECTIONS[i]);
+  const customerBadge = (c: CustomerRecord) => (c.credit === 'Credit hold'
+    ? <span className="nl-badge-hold"><Fa icon={faTriangleExclamation} />Credit hold</span>
+    : <span className="nl-badge-ok"><Fa icon={faCircleCheck} />Approved</span>);
+  const placeOf = (c: CustomerRecord) => [c.city, c.state].filter(Boolean).join(', ');
+
+  // — facility —
+  const setFacility = (i: number, name: string) => {
+    const f = facilityFor(siteFacilities, name);
+    if (f && f.name === name) {
+      const t = (k: string) => strOf(f.details[k]).trim();
+      setStop(i, { facility: name, address: t('street'), city: t('city'), state: t('state').toUpperCase(), zip: t('zip') });
+      setAuto((a) => { const n = new Set(a); ['street', 'city', 'state', 'zip'].forEach((k) => n.add(`s${i}-${k}`)); return n; });
+      touch(`s${i}-street`, `s${i}-csz`);
+      if (!d.stops[i].date) later(() => focusKey(`s${i}-date`));
+    } else setStop(i, { facility: name });
+  };
+  const addStop = (kind: StopDraft['kind']) => setD((p) => {
+    const stops = [...p.stops];
+    if (kind === 'Pickup') {
+      const lastPu = stops.reduce((n, s, i) => (isPickup(s) ? i : n), -1);
+      stops.splice(lastPu + 1, 0, { ...emptyStop('Pickup'), sched: 'fcfs' });
+    } else stops.push({ ...emptyStop('Delivery'), sched: 'fcfs' });
+    return { ...p, stops };
+  });
+  const removeStop = (i: number) => setD((p) => ({ ...p, stops: p.stops.filter((_, j) => j !== i) }));
+
+  // — documents —
+  const fileProblem = (f: File) => (!/\.(pdf|png|jpe?g)$/i.test(f.name) ? `${f.name}: only PDF, PNG or JPG files.` : f.size > MAX_FILE ? `${f.name} is larger than 10 MB.` : '');
+  const attachRateCon = async (f: File | undefined) => {
+    if (!f) return;
+    const problem = fileProblem(f);
+    if (problem) { setUploadError(problem); return; }
+    setUploadError('');
+    const doc = await readAttachment(f, RATE_CON);
+    if (typeof doc === 'string') { setUploadError(doc); return; }
+    setD((p) => ({ ...p, docs: { ...p.docs, [RATE_CON]: doc.name }, files: { ...p.files, [RATE_CON]: doc } }));
+  };
+  const removeRateCon = () => setD((p) => {
+    const files = { ...p.files };
+    delete files[RATE_CON];
+    return { ...p, docs: { ...p.docs, [RATE_CON]: '' }, files };
+  });
+  const addDocs = async (list: FileList | File[]) => {
+    const problems: string[] = [];
+    const added: { category: string; doc: BillDocument }[] = [];
+    for (const f of Array.from(list)) {
+      const problem = fileProblem(f);
+      if (problem) { problems.push(problem); continue; }
+      const doc = await readAttachment(f);
+      if (typeof doc === 'string') problems.push(doc);
+      else added.push({ category: guessCat(f.name), doc });
+    }
+    setUploadError(problems.join(' '));
+    if (added.length) {
+      setD((p) => ({ ...p, docList: [...p.docList, ...added] }));
+      setAuto((a) => { const n = new Set(a); added.forEach((x) => { if (x.category) n.add(`doc-${x.doc.id}`); }); return n; });
+    }
+  };
+  const dropProps = (zone: 'main' | 'more', onFiles: (files: FileList) => void) => ({
+    onDragOver: (e: DragEvent) => { e.preventDefault(); setOver(zone); },
+    onDragEnter: (e: DragEvent) => { e.preventDefault(); setOver(zone); },
+    onDragLeave: (e: DragEvent) => { e.preventDefault(); setOver(''); },
+    onDrop: (e: DragEvent) => { e.preventDefault(); setOver(''); if (e.dataTransfer.files.length) onFiles(e.dataTransfer.files); },
+  });
+
+  // — truck —
+  const pickTruck = (t: FleetTruck) => {
+    const driver = t.driver && t.driver !== 'Unassigned' ? t.driver : '';
+    setD((p) => ({ ...p, truck: t.unit, driver, trailer: strOf(t.details.trailer) }));
+    setTruckQuery('');
+    setTextedAt('');
+    later(() => document.getElementById('nl-truck-change')?.focus());
+  };
+  const truckWarning = (() => {
+    if (!truck || !truckTrailer.type) return '';
+    const type = truckTrailer.type;
+    if (d.tempOn && type.toLowerCase() !== 'reefer') return `Truck ${truck.unit} pulls a ${type}, but this freight is temperature-controlled.`;
+    if (d.equipment && d.equipment.toLowerCase() !== type.toLowerCase()) return `This load needs a ${d.equipment}; Truck ${truck.unit} pulls a ${type}.`;
+    return '';
+  })();
+
+  // — the text to the driver —
+  const stopText = (s: StopDraft, kind: 'pu' | 'del') => {
+    const addr = [s.address.trim(), s.city.trim(), `${s.state.trim().toUpperCase()} ${s.zip.trim()}`.trim()].filter(Boolean).join(', ');
+    const t = schedOf(s) === 'fcfs' ? (s.from && s.to ? `${s.from}–${s.to} FCFS` : '') : s.appt ? `Appt ${s.appt}` : '';
+    const ref = s.number.trim();
+    return `${s.facility.trim() || 'Facility TBD'}${addr ? `, ${addr}` : ''}\n${s.date ? fmtDay(s.date) : 'Date TBD'} · ${t || 'Time TBD'}${ref ? ` · ${kind === 'pu' ? 'PU#' : 'PO#'} ${ref}` : ''}`;
+  };
+  const buildSummary = () => {
+    const w = amountOf(d.weight);
+    const fr = [
+      d.commodity.trim() || 'Commodity TBD', w ? `${w.toLocaleString('en-US')} lbs` : '',
+      d.tempOn && d.temp.trim() !== '' ? `Reefer ${d.temp.trim()}°F ${d.reeferMode.toLowerCase()}` : '',
+      d.hazmat ? `HAZMAT${d.unNumber ? ` UN${d.unNumber}` : ''}${d.hzClass ? ` Class ${d.hzClass.split(' ')[0]}` : ''}` : '',
+    ].filter(Boolean).join(' · ');
+    return [
+      `Load #${loadNo}${d.ref.trim() ? ` (Tender ${d.ref.trim()})` : ''}${customerPicked ? ` – ${d.customer}` : ''}`, '',
+      ...pickups.flatMap(({ s }) => [`PICKUP: ${stopText(s, 'pu')}`, '']),
+      ...deliveries.flatMap(({ s }) => [`DELIVERY: ${stopText(s, 'del')}`, '']),
+      `FREIGHT: ${fr}`,
+      `TRUCK: ${d.truck}${truckTrailer.text ? ` · Trailer ${truckTrailer.text}` : ''}`,
+    ].join('\n');
   };
 
-  // Close and tell the page right away rather than waiting for the dialog's
-  // close event (which browsers deliver later, and not at all in hidden tabs).
+  // — saving —
   const closeNow = () => {
     ref.current?.close();
     onClose();
   };
-
-  const requestClose = () => {
-    const message = editing ? 'Discard your changes to this load?' : 'Discard this new load? What you entered will be lost.';
-    if (!dirty || window.confirm(message)) closeNow();
+  const extraProblem = () => {
+    const firstDoc = d.docList.find((x) => !x.category.trim());
+    if (firstDoc) return `doc-${firstDoc.doc.id}`;
+    const ci = charges.findIndex((c) => chargeProblem(c.type, c.amount));
+    if (ci >= 0) return `chg-${ci}-${chargeProblem(charges[ci].type, charges[ci].amount)?.field}`;
+    return '';
   };
+  const create = () => {
+    setSubmitted(true);
+    const firstBad = rules.find((r) => r.result);
+    if (firstBad) { later(() => focusRule(firstBad)); return; }
+    const extra = extraProblem();
+    if (extra) { later(() => focusKey(extra)); return; }
 
-  const save = () => {
-    const firstBad = SECTIONS.find((s) => errors[s]?.length);
-    if (firstBad) {
-      setShowErrors(true);
-      go(firstBad);
-      return;
+    // New facilities typed on the stops go into Facilities too.
+    const known: Facility[] = [...facilities];
+    const ids = facilities.map((f) => f.id);
+    for (const s of d.stops) {
+      const name = s.facility.trim();
+      if (!name || facilityFor(known, name)) continue;
+      const id = nextRecordId('FAC', ids);
+      ids.push(id);
+      const pickup = isPickup(s);
+      const f = facilityFromForm({
+        ...FACILITY_BLANK, name, type: pickup ? 'Shipper' : 'Receiver', street: s.address.trim(), city: s.city.trim(), state: s.state.trim().toUpperCase(),
+        zip: s.zip.trim(), ...(pickup ? { shipName: s.contact.trim(), shipPhone: (s.phone ?? '').trim() } : { recvName: s.contact.trim(), recvPhone: (s.phone ?? '').trim() }),
+      }, id);
+      saveFacility(f);
+      known.push(f);
     }
-    const saved = load ? toLoad(d, load.id, load) : toLoad(d, nextId(loads));
+    // A carrier typed in is added to the carrier list.
+    if (d.brokered && carrierNew && d.carrier.trim() && !carrierList.some((c) => c.name.toLowerCase() === d.carrier.trim().toLowerCase())) {
+      setSavedCarriers((list) => [...list, { name: d.carrier.trim(), mc: '', dot: '' }]);
+    }
+
+    const final: Draft = {
+      ...d,
+      customer: d.customer.trim(),
+      driver: driverName,
+      weight: plain(d.weight), value: plain(d.value), lineHaul: plain(d.lineHaul), fuel: plain(d.fuel), pieces: plain(d.pieces),
+      accessorials: String(chargeSum),
+      unNumbers: d.hazmat && d.unNumber ? [d.unNumber] : [],
+      unNumber: d.hazmat ? d.unNumber : '',
+      hzClass: d.hazmat ? d.hzClass : '',
+      ltlLoad: d.mode === 'Partial' ? d.ltlLoad : '',
+      stops: d.stops.map((s) => ({ ...s, state: s.state.trim().toUpperCase() })),
+    };
+    const saved = load ? toLoad(final, load.id, load, events) : toLoad(final, loadNo, undefined, events);
     let id = saved.id;
     if (load) updateLoad(saved);
     else id = addLoad(saved);
+    toast(load ? `Load ${id} saved.` : `Load #${id} created for ${final.customer}.`);
     closeNow();
     onSaved?.(id);
   };
 
+  const requestClose = () => setConfirm('discard');
+  const keepEditing = () => {
+    setConfirm(null);
+    later(() => document.getElementById('nl-btn-cancel')?.focus());
+  };
+  const discard = () => {
+    toast(editing ? 'Changes discarded.' : 'Load discarded.', 'info');
+    closeNow();
+  };
   const remove = () => {
     if (!load) return;
     deleteLoad(load.id);
-    setConfirmDelete(false);
+    toast(`Load ${load.id} deleted.`, 'info');
     closeNow();
     onDeleted?.();
   };
+  useEffect(() => {
+    if (confirm) document.getElementById('nl-btn-keep')?.focus();
+  }, [confirm]);
 
-  const total = num(d.lineHaul) + num(d.fuel) + num(d.accessorials);
-  const cost = d.brokered ? num(d.carrierRate) : num(d.driverPay);
-  const reefer = d.equipment.startsWith('Reefer');
-  const errorCount = Object.values(errors).reduce((n, list) => n + (list?.length ?? 0), 0);
+  // — summary pieces —
+  const unset = (t: string) => <span className="is-unset">{t}</span>;
+  const placeText = (s: StopDraft, label: string) => {
+    const loc = s.city.trim() ? `${s.city.trim()}${s.state.trim() ? `, ${s.state.trim().toUpperCase()}` : ''}` : '';
+    const f = s.facility.trim();
+    if (!f && !loc) return <span className="is-unset">{label} not set</span>;
+    return <>{loc || f}{loc && f && <span className="nl-sum-sub">{f}</span>}</>;
+  };
+  const whenText = (s: StopDraft) => {
+    const t = schedOf(s) === 'fcfs' ? (s.from && s.to ? `${s.from}–${s.to} FCFS` : 'FCFS window not set') : s.appt ? `Appt ${s.appt}` : 'Appt time not set';
+    return `${s.date ? fmtDay(s.date) : 'Date not set'} · ${t}`;
+  };
+  const weightNum = amountOf(d.weight);
+  const freightParts = [d.commodity.trim(), weightNum ? `${weightNum.toLocaleString('en-US')} lbs` : '', d.pieces.trim() ? `${d.pieces.trim()} ${d.packaging.toLowerCase()}` : ''].filter(Boolean);
 
-  const pages: Record<Section, ReactNode> = {
-    'Load info': (
-      <>
-        <Head title="Load information" help="Who the load is for and how it moves." />
-        <div className="ui-form-grid">
-          <Field label="Customer" required invalid={missing('Load info', 'Customer')}>
-            <select
-              className="ui-input"
-              value={d.customer}
-              onChange={(e) => {
-                const c = CUSTOMERS.find((x) => x.name === e.target.value);
-                setD((prev) => ({ ...prev, customer: e.target.value, billTo: prev.billTo || e.target.value, terms: c?.terms ?? prev.terms }));
-              }}
-            >
-              <option value="">Select a customer</option>
-              {CUSTOMERS.map((c) => <option key={c.name}>{c.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Bill to">
-            <select className="ui-input" value={d.billTo} onChange={(e) => set('billTo', e.target.value)}>
-              <option value="">Same as customer</option>
-              {CUSTOMERS.map((c) => <option key={c.name}>{c.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Tender / reference #">
-            <input className="ui-input" value={d.ref} onChange={(e) => set('ref', e.target.value)} placeholder="e.g. PO 88-41230" />
-          </Field>
-          <Field label="Customer PO #">
-            <input className="ui-input" value={d.po} onChange={(e) => set('po', e.target.value)} />
-          </Field>
-          <Field label="Mode" group>
-            <Choice options={MODES} value={d.mode} onChange={(v) => set('mode', v)} />
-          </Field>
-          <Field label="Equipment" required invalid={missing('Load info', 'Equipment')}>
-            <select className="ui-input" value={d.equipment} onChange={(e) => set('equipment', e.target.value)}>
-              <option value="">Select equipment</option>
-              {EQUIPMENT.map((x) => <option key={x}>{x}</option>)}
-            </select>
-          </Field>
-          <Field label="Dispatcher">
-            <input className="ui-input" value={d.dispatcher} onChange={(e) => set('dispatcher', e.target.value)} />
-          </Field>
+  const statusLine = remaining === 0
+    ? <><Fa icon={faCircleCheck} className="is-ok" /><span className="is-ok-text">{editing ? 'Ready to save' : 'Ready to create'}</span></>
+    : submitted
+      ? <><Fa icon={faCircleExclamation} className="is-bad" /><span className="is-bad-text">Fix {remaining} field{remaining > 1 ? 's' : ''} to {editing ? 'save' : 'create'} this load</span></>
+      : <><span className="nl-req">*</span><span className="is-left">{remaining} required field{remaining > 1 ? 's' : ''} left</span></>;
+
+  const field = (key: string) => ({
+    'aria-invalid': (invalid(key) ? 'true' : 'false') as 'true' | 'false',
+    'aria-describedby': describe(key),
+  });
+
+  // — one stop card —
+  const stopCard = (s: StopDraft, i: number, extra: boolean) => {
+    const p = `s${i}`;
+    const pu = isPickup(s);
+    const fcfs = schedOf(s) === 'fcfs';
+    const word = pu ? 'Pickup' : 'Delivery';
+    return (
+      <div className="nl-card" key={i}>
+        <div className="nl-stop-head">
+          <span className={`nl-stop-dot ${pu ? 'is-pu' : 'is-del'}`}><Fa icon={pu ? faArrowUp : faArrowDown} /></span>
+          <span className="nl-stop-title">Stop {i + 1} · {word}</span>
+          {extra && <button type="button" className="nl-textbtn nl-fbtn" onClick={() => removeStop(i)}>Remove</button>}
         </div>
-      </>
-    ),
-
-    Stops: (
-      <>
-        <Head title="Stops" help="In the order the truck runs them. Add more for multi-stop loads." />
-        {showErrors && errors.Stops && <div className="ui-errors">{errors.Stops.join(' · ')}</div>}
-        <datalist id="ui-facility-options">
-          {activeFacilities.map((f) => <option key={f.id} value={f.name}>{`${f.type} · ${f.city}, ${f.state}`}</option>)}
-        </datalist>
-        {d.stops.map((s, i) => (
-          <div key={i} className="ui-panel">
-            <div className="ui-panel-head">
-              <span className={`ui-stop-kind ${s.kind === 'Pickup' ? 'pickup' : 'delivery'}`}>Stop {i + 1}</span>
-              <Choice options={['Pickup', 'Delivery'] as StopDraft['kind'][]} value={s.kind} onChange={(v) => setStop(i, { kind: v })} />
-              <div style={{ flex: 1 }} />
-              {d.stops.length > 2 && (
-                <button type="button" className="ui-link" onClick={() => set('stops', d.stops.filter((_, j) => j !== i))}>
-                  Remove
-                </button>
-              )}
+        <div className="nl-g sm-6">
+          <div className="sm-span-3">
+            <label className="nl-lbl" htmlFor={`nl-${p}-facility`}>Facility name <Req /></label>
+            <div className="nl-rel">
+              <span className="nl-in-ico is-12"><Fa icon={faWarehouse} /></span>
+              <input
+                id={`nl-${p}-facility`} list="nl-facility-options" aria-required="true" className={`${cls(`${p}-facility`)} nl-pl-9`} placeholder="Search saved or type new"
+                value={s.facility} {...field(`${p}-facility`)} onChange={(e) => setFacility(i, e.target.value)}
+              />
             </div>
-            <div className="ui-form-grid">
-              <Field label="Facility" required wide invalid={showErrors && !s.facility.trim()}>
-                <input className="ui-input" list="ui-facility-options" value={s.facility} onChange={(e) => setFacility(i, e.target.value)} placeholder="Start typing — registered facilities fill in the address" />
-              </Field>
-              <Field label="Street address" required wide invalid={showErrors && !s.address.trim()}>
-                <input className="ui-input" value={s.address} onChange={(e) => setStop(i, { address: e.target.value })} />
-              </Field>
+            {errFor(`${p}-facility`)}
+          </div>
+          <div className="sm-span-3">
+            <label className="nl-lbl" htmlFor={`nl-${p}-street`}>Street address <Req /></label>
+            <input
+              id={`nl-${p}-street`} aria-required="true" className={cls(`${p}-street`)} placeholder="Street and number" value={s.address} {...field(`${p}-street`)}
+              onChange={(e) => { unauto(`${p}-street`); setStop(i, { address: e.target.value }); }}
+            />
+            {errFor(`${p}-street`)}
+          </div>
+          <div className="sm-span-4">
+            <div className="nl-csz">
+              <div>
+                <label className="nl-lbl" htmlFor={`nl-${p}-city`}>City <Req /></label>
+                <input id={`nl-${p}-city`} aria-required="true" className={cls(`${p}-city`)} placeholder="City" value={s.city} {...field(`${p}-city`)}
+                  onChange={(e) => { unauto(`${p}-city`); setStop(i, { city: e.target.value }); }} />
+              </div>
+              <div>
+                <label className="nl-lbl" htmlFor={`nl-${p}-state`}>State <Req /></label>
+                <input id={`nl-${p}-state`} maxLength={2} aria-required="true" className={`${cls(`${p}-state`)} is-upper`} placeholder={pu ? 'NC' : 'IL'} value={s.state} {...field(`${p}-state`)}
+                  onChange={(e) => { unauto(`${p}-state`); setStop(i, { state: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') }); }} />
+              </div>
+              <div>
+                <label className="nl-lbl" htmlFor={`nl-${p}-zip`}>ZIP <Req /></label>
+                <input id={`nl-${p}-zip`} inputMode="numeric" maxLength={5} aria-required="true" className={cls(`${p}-zip`)} placeholder="00000" value={s.zip} {...field(`${p}-zip`)}
+                  onChange={(e) => { unauto(`${p}-zip`); setStop(i, { zip: e.target.value.replace(/\D/g, '') }); }} />
+              </div>
             </div>
-            <div className="ui-form-grid is-3" style={{ marginTop: 16 }}>
-              <Field label="City" required invalid={showErrors && !s.city.trim()}>
-                <input className="ui-input" value={s.city} onChange={(e) => setStop(i, { city: e.target.value })} />
-              </Field>
-              <Field label="State" required invalid={showErrors && !s.state.trim()}>
-                <input className="ui-input" value={s.state} maxLength={2} onChange={(e) => setStop(i, { state: e.target.value })} placeholder="CA" />
-              </Field>
-              <Field label="ZIP">
-                <input className="ui-input" value={s.zip} inputMode="numeric" onChange={(e) => setStop(i, { zip: e.target.value })} />
-              </Field>
-              <Field label="Date" required invalid={showErrors && !s.date}>
-                <input className="ui-input" type="date" max="9999-12-31" value={s.date} onChange={(e) => setStop(i, { date: e.target.value })} />
-              </Field>
-              <Field label="Window opens">
-                <input className="ui-input" type="time" value={s.from} onChange={(e) => setStop(i, { from: e.target.value })} />
-              </Field>
-              <Field label="Window closes">
-                <input className="ui-input" type="time" value={s.to} onChange={(e) => setStop(i, { to: e.target.value })} />
-              </Field>
-              <Field label={`${s.kind} #`}>
-                <input className="ui-input" value={s.number} onChange={(e) => setStop(i, { number: e.target.value })} />
-              </Field>
-              <Field label="Site contact" wide>
-                <input className="ui-input" value={s.contact} onChange={(e) => setStop(i, { contact: e.target.value })} placeholder="Name and phone" />
-              </Field>
-            </div>
-            {knownFacility(s.facility) && (
-              <div className="ui-note" style={{ marginTop: 14 }}>
-                <strong>Registered facility.</strong> {stopHint(knownFacility(s.facility) as Facility)}
+            {errFor(`${p}-csz`)}
+          </div>
+          <div className="sm-span-2">
+            <label className="nl-lbl" htmlFor={`nl-${p}-date`}>Date <Req /></label>
+            <input id={`nl-${p}-date`} type="date" max="9999-12-31" aria-required="true" className={cls(`${p}-date`)} value={s.date} {...field(`${p}-date`)}
+              onChange={(e) => setStop(i, { date: e.target.value })} />
+            {errFor(`${p}-date`)}
+          </div>
+          <div className="sm-span-2">
+            <span id={`nl-${p}-sched-label`} className="nl-lbl">Scheduling <Req /></span>
+            <Seg
+              name={`nl-${p}-sched`} label={`nl-${p}-sched-label`} value={schedOf(s)}
+              options={[{ value: 'fcfs', label: 'FCFS', aria: 'First come, first served' }, { value: 'appt', label: 'Appt', aria: 'By appointment' }]}
+              onChange={(v) => { setStop(i, { sched: v as 'fcfs' | 'appt' }); setTouched((t) => { const n = new Set(t); n.delete(`${p}-time`); return n; }); }}
+            />
+          </div>
+          <div className="sm-span-4">
+            {fcfs ? (
+              <div>
+                <span className="nl-lbl">Window <Req /> <span className="nl-opt">· first come, first served</span></span>
+                <div className="nl-window">
+                  <input id={`nl-${p}-from`} type="time" aria-label={`${word} window opens`} className={cls(`${p}-from`)} value={s.from} {...field(`${p}-from`)}
+                    onChange={(e) => setStop(i, { from: e.target.value })} />
+                  <span>to</span>
+                  <input id={`nl-${p}-to`} type="time" aria-label={`${word} window closes`} className={cls(`${p}-to`)} value={s.to} {...field(`${p}-to`)}
+                    onChange={(e) => setStop(i, { to: e.target.value })} />
+                </div>
+                {errFor(`${p}-time`)}
+              </div>
+            ) : (
+              <div>
+                <label className="nl-lbl" htmlFor={`nl-${p}-appt`}>Appointment time <Req /></label>
+                <input id={`nl-${p}-appt`} type="time" className={cls(`${p}-appt`)} value={s.appt ?? ''} {...field(`${p}-appt`)}
+                  onChange={(e) => setStop(i, { appt: e.target.value })} />
+                {errFor(`${p}-time`)}
               </div>
             )}
           </div>
-        ))}
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" className="ui-btn" onClick={() => set('stops', [...d.stops.slice(0, -1), emptyStop('Pickup'), d.stops[d.stops.length - 1]])}>
-            + Add pickup
-          </button>
-          <button type="button" className="ui-btn" onClick={() => set('stops', [...d.stops, emptyStop('Delivery')])}>
-            + Add delivery
-          </button>
-        </div>
-      </>
-    ),
-
-    Freight: (
-      <>
-        <Head title="Freight" help="What is on the trailer." />
-        <div className="ui-form-grid">
-          <Field label="Commodity" required wide invalid={missing('Freight', 'Commodity')}>
-            <input className="ui-input" value={d.commodity} onChange={(e) => set('commodity', e.target.value)} placeholder="e.g. Frozen produce" />
-          </Field>
-          <Field label="Weight (lb)" required invalid={missing('Freight', 'Weight')}>
-            <input className="ui-input" type="number" min={0} value={d.weight} onChange={(e) => set('weight', e.target.value)} />
-          </Field>
-          <Field label="Declared value ($)">
-            <input className="ui-input" type="number" min={0} value={d.value} onChange={(e) => set('value', e.target.value)} />
-          </Field>
-          <Field label="Pieces">
-            <input className="ui-input" type="number" min={0} value={d.pieces} onChange={(e) => set('pieces', e.target.value)} />
-          </Field>
-          <Field label="Packaging">
-            <select className="ui-input" value={d.packaging} onChange={(e) => set('packaging', e.target.value)}>
-              {PACKAGING.map((x) => <option key={x}>{x}</option>)}
-            </select>
-          </Field>
-          {reefer && (
-            <Field label="Temperature (°F)">
-              <input className="ui-input" type="number" value={d.temp} onChange={(e) => set('temp', e.target.value)} placeholder="e.g. -10" />
-            </Field>
-          )}
-          <div className="ui-field is-wide">
-            <label className="ui-check">
-              <input type="checkbox" checked={d.hazmat} onChange={(e) => set('hazmat', e.target.checked)} />
-              Hazardous materials
-            </label>
+          <div className="sm-span-2">
+            <label className="nl-lbl" htmlFor={`nl-${p}-ref`}>{pu ? 'Pickup #' : 'P.O. #'} <span className="nl-opt">(optional)</span></label>
+            <input id={`nl-${p}-ref`} className="nl-inp" placeholder={pu ? 'e.g. PU-55120' : 'e.g. 4500-2291'} value={s.number} onChange={(e) => setStop(i, { number: e.target.value })} />
           </div>
-          {d.hazmat && (
-            <Field label="UN number" required invalid={missing('Freight', 'UN number for hazmat')}>
-              <input className="ui-input" value={d.unNumber} onChange={(e) => set('unNumber', e.target.value)} placeholder="e.g. UN1203" />
-            </Field>
-          )}
-        </div>
-      </>
-    ),
-
-    LTL: d.mode === 'LTL' ? (
-      <>
-        <Head title="LTL details" help="Needed to rate and class a less-than-truckload shipment." />
-        <div className="ui-form-grid">
-          <Field label="Freight class" required invalid={missing('LTL', 'Freight class')}>
-            <select className="ui-input" value={d.freightClass} onChange={(e) => set('freightClass', e.target.value)}>
-              <option value="">Select a class</option>
-              {FREIGHT_CLASSES.map((x) => <option key={x}>{x}</option>)}
-            </select>
-          </Field>
-          <Field label="NMFC #">
-            <input className="ui-input" value={d.nmfc} onChange={(e) => set('nmfc', e.target.value)} />
-          </Field>
-          <Field label="Handling units" required invalid={missing('LTL', 'Handling units')}>
-            <input className="ui-input" type="number" min={0} value={d.handlingUnits} onChange={(e) => set('handlingUnits', e.target.value)} />
-          </Field>
-          <div className="ui-field" style={{ justifyContent: 'flex-end' }}>
-            <label className="ui-check">
-              <input type="checkbox" checked={d.stackable} onChange={(e) => set('stackable', e.target.checked)} />
-              Stackable
-            </label>
+          <div className="sm-span-2">
+            <label className="nl-lbl" htmlFor={`nl-${p}-contact`}>Contact</label>
+            <input id={`nl-${p}-contact`} className="nl-inp" placeholder={pu ? 'Shipping desk' : 'Receiving desk'} value={s.contact} onChange={(e) => setStop(i, { contact: e.target.value })} />
+          </div>
+          <div className="sm-span-2">
+            <label className="nl-lbl" htmlFor={`nl-${p}-phone`}>Phone</label>
+            <input id={`nl-${p}-phone`} type="tel" className="nl-inp" placeholder="(555) 000-0000" value={s.phone ?? ''} onChange={(e) => setStop(i, { phone: e.target.value })} />
+          </div>
+          <div className="sm-span-6">
+            <label className="nl-lbl" htmlFor={`nl-${p}-notes`}>{word} notes</label>
+            <input id={`nl-${p}-notes`} className="nl-inp" placeholder={pu ? 'Dock, gate code, check-in…' : 'Dock, appointment, lumper…'} value={s.notes ?? ''} onChange={(e) => setStop(i, { notes: e.target.value })} />
           </div>
         </div>
-        <div className="ui-form-grid is-3">
-          <Field label="Length (in)">
-            <input className="ui-input" type="number" min={0} value={d.length} onChange={(e) => set('length', e.target.value)} />
-          </Field>
-          <Field label="Width (in)">
-            <input className="ui-input" type="number" min={0} value={d.width} onChange={(e) => set('width', e.target.value)} />
-          </Field>
-          <Field label="Height (in)">
-            <input className="ui-input" type="number" min={0} value={d.height} onChange={(e) => set('height', e.target.value)} />
-          </Field>
-        </div>
-        <Field label="Services" group>
-          <div className="ui-checks">
-            {LTL_SERVICES.map((x) => (
-              <label key={x} className="ui-check">
-                <input
-                  type="checkbox"
-                  checked={d.services.includes(x)}
-                  onChange={(e) => set('services', e.target.checked ? [...d.services, x] : d.services.filter((y) => y !== x))}
-                />
-                {x}
-              </label>
-            ))}
-          </div>
-        </Field>
-      </>
-    ) : (
-      <>
-        <Head title="LTL details" help="Only needed for less-than-truckload shipments." />
-        <div className="ui-note">
-          This load is {d.mode === 'FTL' ? 'a full truckload' : 'a partial'}, so there is nothing to fill in here.{' '}
-          <button type="button" className="ui-link" onClick={() => set('mode', 'LTL')}>Make it an LTL load</button>
-        </div>
-      </>
-    ),
-
-    Carrier: (
-      <>
-        <Head title="Carrier" help={`Haul it with the ${USER.company || 'own'} fleet, or broker it to a partner carrier.`} />
-        <Field label="Hauled by" group>
-          <Choice
-            options={['Own fleet', 'Partner carrier']}
-            value={d.brokered ? 'Partner carrier' : 'Own fleet'}
-            // Switching who hauls it clears the assignment; clicking the choice it already has changes nothing.
-            onChange={(v) => setD((prev) => (prev.brokered === (v === 'Partner carrier') ? prev : { ...prev, brokered: v === 'Partner carrier', driver: '', truck: '', trailer: '' }))}
-          />
-        </Field>
-        {d.brokered ? (
-          <div className="ui-form-grid">
-            <Field label="Carrier" required invalid={missing('Carrier', 'Carrier')}>
-              <input
-                className="ui-input" list="ui-carrier-options" value={d.carrier} placeholder="Carrier name"
-                onChange={(e) => {
-                  // A carrier used before fills in its MC and DOT numbers.
-                  const known = CARRIERS.slice(1).find((c) => c.name === e.target.value);
-                  setD((prev) => ({ ...prev, carrier: e.target.value, ...(known ? { carrierMc: known.mc, carrierDot: known.dot } : {}) }));
-                }}
-              />
-              <datalist id="ui-carrier-options">
-                {CARRIERS.slice(1).map((c) => <option key={c.name} value={c.name}>{c.mc}</option>)}
-              </datalist>
-            </Field>
-            <Field label="MC #">
-              <input className="ui-input" value={d.carrierMc} onChange={(e) => set('carrierMc', e.target.value)} placeholder="e.g. MC 604117" />
-            </Field>
-            <Field label="DOT #">
-              <input className="ui-input" value={d.carrierDot} onChange={(e) => set('carrierDot', e.target.value)} placeholder="e.g. DOT 1780342" />
-            </Field>
-            <Field label="Carrier rate ($)" required invalid={missing('Carrier', 'Carrier rate')}>
-              <input className="ui-input" type="number" min={0} value={d.carrierRate} onChange={(e) => set('carrierRate', e.target.value)} />
-            </Field>
-            <Field label="Carrier dispatcher">
-              <input className="ui-input" value={d.carrierContact} onChange={(e) => set('carrierContact', e.target.value)} />
-            </Field>
-            <Field label="Carrier phone">
-              <input className="ui-input" type="tel" value={d.carrierPhone} onChange={(e) => set('carrierPhone', e.target.value)} />
-            </Field>
-          </div>
-        ) : (
-          <div className="ui-note">
-            {CARRIERS[0].name} · {CARRIERS[0].mc} · {CARRIERS[0].dot}. Assign the driver, truck and trailer in Driver &amp; equipment.
-          </div>
-        )}
-      </>
-    ),
-
-    'Driver & equipment': (
-      <>
-        <Head
-          title="Driver & equipment"
-          help={d.brokered ? 'The partner carrier’s driver and units, if you have them yet.' : 'Leave the driver empty to put the load on the board as Needs driver.'}
-        />
-        {d.brokered ? (
-          <div className="ui-form-grid is-3">
-            <Field label="Driver name">
-              <input className="ui-input" value={d.driver} onChange={(e) => set('driver', e.target.value)} />
-            </Field>
-            <Field label="Truck #">
-              <input className="ui-input" value={d.truck} onChange={(e) => set('truck', e.target.value)} />
-            </Field>
-            <Field label="Trailer #">
-              <input className="ui-input" value={d.trailer} onChange={(e) => set('trailer', e.target.value)} />
-            </Field>
-          </div>
-        ) : (
-          <div className="ui-form-grid is-3">
-            <Field label="Driver">
-              <select
-                className="ui-input"
-                value={d.driver}
-                onChange={(e) => {
-                  const drv = activeDrivers.find((x) => x.name === e.target.value);
-                  const unit = drv && drv.unit !== '—' ? drv.unit : '';
-                  setD((prev) => ({ ...prev, driver: e.target.value, truck: prev.truck || unit }));
-                }}
-              >
-                <option value="">Unassigned</option>
-                {activeDrivers.map((x) => <option key={x.id} value={x.name}>{x.name} · {x.status}</option>)}
-                {d.driver && !activeDrivers.some((x) => x.name === d.driver) && <option value={d.driver}>{d.driver}</option>}
-              </select>
-            </Field>
-            <Field label="Truck">
-              <select className="ui-input" value={d.truck} onChange={(e) => set('truck', e.target.value)}>
-                <option value="">None</option>
-                {activeTrucks.map((x) => <option key={x.id} value={x.unit}>{x.unit} · {x.status}</option>)}
-                {d.truck && !activeTrucks.some((x) => x.unit === d.truck) && <option value={d.truck}>{d.truck}</option>}
-              </select>
-            </Field>
-            <Field label="Trailer">
-              <select className="ui-input" value={d.trailer} onChange={(e) => set('trailer', e.target.value)}>
-                <option value="">None</option>
-                {activeTrailers.map((x) => <option key={x.id} value={x.unit}>{x.unit} · {x.kind}</option>)}
-                {d.trailer && !activeTrailers.some((x) => x.unit === d.trailer) && <option value={d.trailer}>{d.trailer}</option>}
-              </select>
-            </Field>
-          </div>
-        )}
-      </>
-    ),
-
-    Rates: (
-      <>
-        <Head title="Rates" help="What the customer pays and what the load costs." />
-        <div className="ui-form-grid">
-          <Field label="Line haul ($)" required invalid={missing('Rates', 'Line haul rate')}>
-            <input className="ui-input" type="number" min={0} value={d.lineHaul} onChange={(e) => set('lineHaul', e.target.value)} />
-          </Field>
-          <Field label="Fuel surcharge ($)">
-            <input className="ui-input" type="number" min={0} value={d.fuel} onChange={(e) => set('fuel', e.target.value)} />
-          </Field>
-          <Field label="Accessorial charges ($)">
-            <input className="ui-input" type="number" min={0} value={d.accessorials} onChange={(e) => set('accessorials', e.target.value)} />
-          </Field>
-          <Field label="Loaded miles">
-            <input className="ui-input" type="number" min={0} value={d.miles} onChange={(e) => set('miles', e.target.value)} />
-          </Field>
-          {!d.brokered && (
-            <Field label="Driver pay ($)">
-              <input className="ui-input" type="number" min={0} value={d.driverPay} onChange={(e) => set('driverPay', e.target.value)} />
-            </Field>
-          )}
-          <Field label="Payment terms">
-            <select className="ui-input" value={d.terms} onChange={(e) => set('terms', e.target.value)}>
-              {TERMS.map((x) => <option key={x}>{x}</option>)}
-            </select>
-          </Field>
-        </div>
-        <div className="ui-summary">
-          <Stat label="Total to customer" value={money(total)} />
-          <Stat label="Rate / mile" value={num(d.miles) > 0 ? `$${(num(d.lineHaul) / num(d.miles)).toFixed(2)}` : '—'} />
-          <Stat label={d.brokered ? 'Carrier cost' : 'Driver pay'} value={cost > 0 ? money(cost) : '—'} />
-          <Stat label="Margin" value={cost > 0 ? signedMoney(total - cost) : '—'} />
-        </div>
-      </>
-    ),
-
-    Documents: (
-      <>
-        <Head title="Documents" help="Attach what you have now; the rest can be added from the load later." />
-        <div className="ui-panel" style={{ padding: '4px 18px' }}>
-          {DOCUMENTS.map((name) => {
-            const file = d.docs[name];
-            return (
-              <div key={name} className="ui-file-row">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>{name}</div>
-                  <div className="ui-setting-help" style={{ overflowWrap: 'anywhere' }}>{file || 'Not attached'}</div>
-                </div>
-                {file && (
-                  <button type="button" className="ui-link" onClick={() => setD((prev) => { const { [name]: _gone, ...files } = prev.files; return { ...prev, docs: { ...prev.docs, [name]: '' }, files }; })}>
-                    Remove
-                  </button>
-                )}
-                {isLive('attach-popup') ? (
-                  <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttachingDoc(name)}>{file ? 'Replace' : 'Attach'}</button>
-                ) : (
-                  <label className="ui-btn ui-btn-sm">
-                    {file ? 'Replace' : 'Attach'}
-                    <input
-                      className="ui-file-input"
-                      type="file"
-                      accept=".pdf,image/*"
-                      onChange={(e) => set('docs', { ...d.docs, [name]: e.target.files?.[0]?.name ?? '' })}
-                    />
-                  </label>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {attachingDoc && (
-          <AttachDialog
-            title={load ? `Load ${load.id}` : 'New load'} only={attachingDoc} accept=".pdf,image/*"
-            onAttach={(docs) => { const doc = docs[0]; if (doc) setD((prev) => ({ ...prev, docs: { ...prev.docs, [attachingDoc]: doc.name }, files: { ...prev.files, [attachingDoc]: doc } })); }}
-            onClose={() => setAttachingDoc(null)}
-          />
-        )}
-      </>
-    ),
-
-    Notes: (
-      <>
-        <Head title="Notes" help="Instructions go to the driver with the load; internal notes stay in the office." />
-        <div className="ui-form-grid">
-          <Field label="Driver instructions" wide>
-            <textarea className="ui-input" value={d.instructions} onChange={(e) => set('instructions', e.target.value)} placeholder="Check in at gate 3, 2-hour free time, no touch freight…" />
-          </Field>
-          <Field label="Internal notes" wide>
-            <textarea className="ui-input" value={d.internal} onChange={(e) => set('internal', e.target.value)} />
-          </Field>
-        </div>
-      </>
-    ),
-
-    Review: (
-      <>
-        <Head title="Review" help="Check the load before it goes on the board." />
-        {errorCount > 0 ? (
-          <div className="ui-errors">
-            <strong>{errorCount} {errorCount === 1 ? 'thing' : 'things'} left to fill in</strong>
-            {SECTIONS.filter((s) => errors[s]?.length).map((s) => (
-              <div key={s} style={{ marginTop: 6 }}>
-                <button type="button" className="ui-link" onClick={() => { setShowErrors(true); go(s); }}>{s}</button>
-                {' — '}{errors[s]?.join(', ')}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="ui-note">
-            {editing
-              ? `Everything required is filled in. Save changes updates ${load?.id} on the board, its load page and the planner.`
-              : `Everything required is filled in. It goes on the board as ${d.brokered || d.driver ? coveredStatus() : 'Needs driver'}.`}
-          </div>
-        )}
-        <div className="ui-summary">
-          <Stat label="Customer" value={d.customer || '—'} />
-          <Stat label="Mode · equipment" value={`${d.mode} · ${d.equipment || '—'}`} />
-          <Stat label="Stops" value={`${d.stops.filter((s) => s.kind === 'Pickup').length} pickup · ${d.stops.filter((s) => s.kind === 'Delivery').length} delivery`} />
-          <Stat label="Route" value={d.stops[0].city && d.stops[d.stops.length - 1].city ? `${d.stops[0].city} → ${d.stops[d.stops.length - 1].city}` : '—'} />
-          <Stat label="Freight" value={d.commodity ? `${d.commodity}${d.weight ? ` · ${num(d.weight).toLocaleString('en-US')} lb` : ''}` : '—'} />
-          <Stat label="Carrier" value={d.brokered ? d.carrier || '—' : CARRIERS[0].name} />
-          <Stat label="Driver" value={d.driver || 'Unassigned'} />
-          <Stat label="Total to customer" value={money(total)} />
-        </div>
-      </>
-    ),
+      </div>
+    );
   };
+
+  const moneyInput = (key: 'f-linehaul' | 'f-fuel', name: 'lineHaul' | 'fuel', required: boolean) => (
+    <div className="nl-rel">
+      <span className="nl-pre">$</span>
+      <input
+        id={`nl-${key}`} inputMode="decimal" aria-required={required || undefined} className={`${cls(key)} nl-pl-7`} placeholder="0.00" value={d[name]} {...field(key)}
+        onChange={(e) => { unauto(key); set(name, e.target.value.replace(/[^\d.,]/g, '')); }}
+        onBlur={(e) => set(name, fmtMoney(e.target.value))}
+      />
+    </div>
+  );
+  const yesNo = [{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }];
 
   return (
     <dialog
       ref={ref}
-      className="ui-dialog is-large"
-      aria-label={editing ? `Edit load ${load?.id}` : 'New load'}
-      // React passes a nested dialog's close/cancel up to this one, so only
-      // react to this dialog's own events (not the Delete load prompt's).
-      onClose={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      className="nl"
+      aria-labelledby="nl-title"
+      aria-describedby="nl-desc"
       onCancel={(e) => {
         if (e.target !== e.currentTarget) return;
-        // Escape: ask before throwing away a half-entered load.
         e.preventDefault();
-        requestClose();
+        if (confirm) keepEditing();
+        else requestClose();
+      }}
+      onClose={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !dispatching && !confirm) { e.preventDefault(); create(); }
       }}
     >
-      <aside className="ui-dialog-nav">
-        <div className="ui-dialog-title">{editing ? `Edit load ${load?.id}` : 'New load'}</div>
-        {SECTIONS.map((s) => {
-          const n = showErrors ? errors[s]?.length ?? 0 : 0;
-          return (
-            <button key={s} type="button" className={`ui-dialog-nav-item${section === s ? ' is-active' : ''}`} onClick={() => go(s)}>
-              <span>{s}</span>
-              {n > 0 && <span className="ui-badge" aria-label={`${n} missing`}>{n}</span>}
-              {n === 0 && s === 'LTL' && d.mode !== 'LTL' && <span className="ui-nav-note">N/A</span>}
-            </button>
-          );
-        })}
-      </aside>
-      <div className="ui-dialog-main">
-        <section className="ui-dialog-body" ref={bodyRef}>
-          <button type="button" className="ui-dialog-close" onClick={requestClose} aria-label="Close">
-            ×
-          </button>
-          {pages[section]}
-        </section>
-        <footer className="ui-dialog-foot">
-          <button type="button" className="ui-btn" onClick={requestClose}>Cancel</button>
-          {editing && (
-            <button type="button" className="ui-btn ui-btn-danger" onClick={() => setConfirmDelete(true)}>Delete load</button>
+      <datalist id="nl-facility-options">{siteFacilities.map((f) => <option key={f.id} value={f.name} />)}</datalist>
+      <datalist id="nl-charge-types">{CHARGE_TYPES.map((c) => <option key={c} value={c} />)}</datalist>
+      <datalist id="nl-doc-cats">{DOC_CATS.map((c) => <option key={c} value={c} />)}</datalist>
+
+      {/* Header */}
+      <header className="nl-head">
+        <div className="nl-head-left">
+          <div className="nl-head-ico"><Fa icon={faBoxOpen} /></div>
+          <div>
+            <h1 id="nl-title" ref={titleRef} tabIndex={-1} className="nl-title">{editing ? `Edit load ${loadNo}` : 'Create new load'}</h1>
+            <p id="nl-desc" className="nl-desc">
+              {editing ? 'Change the load’s details below.' : 'Attach the rate confirmation and enter the load’s details.'} <span className="nl-req">*</span> Required.
+            </p>
+          </div>
+        </div>
+        <div className="nl-head-right">
+          <div className="nl-progress">
+            <div className="nl-progress-row"><span>Progress</span><span>{secDone} of {COUNTED.length} sections</span></div>
+            <div className="nl-progress-track" role="progressbar" aria-label="Sections completed" aria-valuemin={0} aria-valuemax={COUNTED.length} aria-valuenow={secDone}>
+              <div className="nl-progress-bar" style={{ width: `${(secDone / COUNTED.length) * 100}%` }} />
+            </div>
+          </div>
+          <button type="button" className="nl-x nl-fbtn" aria-label="Close and cancel" onClick={requestClose}><Fa icon={faXmark} /></button>
+        </div>
+      </header>
+
+      <div className="nl-body">
+        {/* Left sidebar */}
+        <aside className="nl-side">
+          <nav aria-label="Form sections">
+            <p className="nl-side-head">Sections</p>
+            {sections.map((s) => (
+              <button
+                key={s.id} type="button" className={`nl-navlink nl-fbtn${current === s.id ? ' is-active' : ''}`}
+                aria-current={current === s.id ? 'true' : undefined} onClick={() => goTo(s.id)}
+              >
+                <span className="nl-nav-ico"><Fa icon={s.icon} /></span>
+                <span className="nl-nav-label">{s.label}</span>
+                <span className="nl-nav-status">{statusOf(s.id)}</span>
+              </button>
+            ))}
+          </nav>
+          {!editing && (
+            <div className="nl-tip">
+              <div className="nl-tip-head"><Fa icon={faLightbulb} /> Keep it together</div>
+              <p>Attach the rate confirmation and other paperwork here, so it's filed with the load.</p>
+            </div>
           )}
-          <div style={{ flex: 1 }} />
-          {section !== SECTIONS[0] && <button type="button" className="ui-btn" onClick={() => step(-1)}>Back</button>}
-          {section !== 'Review' && <button type="button" className="ui-btn" onClick={() => step(1)}>Next</button>}
-          <button type="button" className="ui-btn ui-btn-primary" onClick={save}>{editing ? 'Save changes' : 'Create load'}</button>
-        </footer>
+        </aside>
+
+        {/* Main form */}
+        <main className="nl-main" ref={scrollRef} onScroll={spy}>
+          <div className="nl-tabs">
+            {sections.map((s) => (
+              <button key={s.id} type="button" className={`nl-tab${current === s.id ? ' is-active' : ''}`} onClick={() => goTo(s.id)}>{s.label}</button>
+            ))}
+          </div>
+
+          <form className="nl-form" autoComplete="off" noValidate onSubmit={(e) => e.preventDefault()} onBlur={onBlurCapture}>
+            {/* 1. Document */}
+            {!editing && (
+              <section id="nl-sec-document" className="nl-sec">
+                <SecHead title="Upload rate confirmation" sub="Optional — attach it here, then add BOLs, PODs and receipts." />
+                {!rateCon ? (
+                  <div className={`nl-drop${over === 'main' ? ' is-over' : ''}`} {...dropProps('main', (files) => void attachRateCon(files[0]))}>
+                    <div className="nl-drop-ico"><Fa icon={faCloudArrowUp} /></div>
+                    <p className="nl-drop-title">Drag & drop your rate confirmation here</p>
+                    <p className="nl-drop-sub">PDF, PNG or JPG · up to 10 MB</p>
+                    <div className="nl-drop-btns">
+                      <label htmlFor="nl-file-input" className="nl-browse"><Fa icon={faFolderOpen} /> Browse files</label>
+                    </div>
+                    <input id="nl-file-input" type="file" accept={ACCEPT} className="nl-file-input" onChange={(e) => { void attachRateCon(e.target.files?.[0]); e.target.value = ''; }} />
+                  </div>
+                ) : (
+                  <div className="nl-filecard">
+                    <div className="nl-filecard-row">
+                      <div className={`nl-file-ico${isImage(rateCon.name) ? ' is-img' : ''}`}><Fa icon={isImage(rateCon.name) ? faFileImage : faFilePdf} /></div>
+                      <div className="nl-file-main">
+                        <div className="nl-file-top">
+                          <p className="nl-file-name">{rateCon.name}</p>
+                          <button type="button" className="nl-file-remove nl-fbtn" onClick={removeRateCon}><Fa icon={faXmark} />Remove</button>
+                        </div>
+                        <div className="nl-file-status">{fileSize(rateCon.size)} · <span className="is-ok">Attached</span> · <b>Rate confirmation</b></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {uploadError && <p className="nl-err" role="alert"><Fa icon={faCircleExclamation} /><span>{uploadError}</span></p>}
+
+                {docsShown && (
+                  <div className="nl-docs">
+                    <div className="nl-docs-top">
+                      <p id="nl-docs-label" className="nl-docs-title">Other documents <span>{d.docList.length ? `(${d.docList.length})` : ''}</span></p>
+                      <p>Give each file a category so it's filed correctly.</p>
+                    </div>
+                    <ul className="nl-doc-list" aria-labelledby="nl-docs-label">
+                      {d.docList.map((x, k) => {
+                        const key = `doc-${x.doc.id}`;
+                        const bad = submitted && !x.category.trim();
+                        const img = isImage(x.doc.name);
+                        return (
+                          <li key={x.doc.id} className="nl-doc">
+                            <div className="nl-doc-row">
+                              <span className={`nl-doc-ico${img ? ' is-img' : ''}`}><Fa icon={img ? faFileImage : faFilePdf} /></span>
+                              <div className="nl-doc-main">
+                                <p className="nl-file-name">{x.doc.name}</p>
+                                <p className="nl-doc-meta">{fileSize(x.doc.size)}{auto.has(key) ? ' · category suggested from file name' : ''}</p>
+                              </div>
+                              <div className="nl-doc-cat">
+                                <input
+                                  id={`nl-${key}`} list="nl-doc-cats" className={`${cls(key)} is-sm`} placeholder="Select or type category" aria-label={`Category for ${x.doc.name}`}
+                                  aria-invalid={bad ? 'true' : 'false'} aria-describedby={bad ? `nl-${key}-err` : undefined} value={x.category}
+                                  onChange={(e) => { unauto(key); set('docList', d.docList.map((y, j) => (j === k ? { ...y, category: e.target.value } : y))); }}
+                                />
+                              </div>
+                              <button
+                                type="button" className="nl-icon-btn is-36 nl-fbtn" aria-label={`Remove ${x.doc.name}`}
+                                onClick={() => set('docList', d.docList.filter((_, j) => j !== k))}
+                              >
+                                <Fa icon={faTrashCan} />
+                              </button>
+                            </div>
+                            {bad && <p id={`nl-${key}-err`} className="nl-err"><Fa icon={faCircleExclamation} /><span>Choose a category for this document, e.g. BOL or POD.</span></p>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <div className={`nl-drop-more${over === 'more' ? ' is-over' : ''}`} {...dropProps('more', (files) => void addDocs(files))}>
+                      <div className="nl-drop-more-left">
+                        <span className="nl-drop-more-ico"><Fa icon={faCloudArrowUp} /></span>
+                        <div>
+                          <p className="nl-drop-more-title">Drag & drop more documents</p>
+                          <p className="nl-drop-more-sub">BOL, POD, lumper receipts… PDF, PNG or JPG · up to 10 MB each</p>
+                        </div>
+                      </div>
+                      <label htmlFor="nl-file-more" className="nl-browse is-sm"><Fa icon={faFolderOpen} /> Add files</label>
+                      <input id="nl-file-more" type="file" multiple accept={ACCEPT} className="nl-file-input" onChange={(e) => { if (e.target.files) void addDocs(e.target.files); e.target.value = ''; }} />
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* 2. Load details */}
+            <section id="nl-sec-load" className="nl-sec">
+              <SecHead
+                title="Load details" sub="Who tendered the load and how to reach them."
+                right={(
+                  <p className="nl-loadno" title="Assigned automatically — can't be changed">
+                    <Fa icon={faLock} /><span className="nl-sr">System-assigned load number, read only:</span>Load #<span className="nl-num">{loadNo}</span>
+                  </p>
+                )}
+              />
+              <div className="nl-card nl-g sm-2">
+                <div>
+                  <label className="nl-lbl" htmlFor="nl-customer-search">Broker / customer <Req /></label>
+                  <Combo<CustomerRecord>
+                    id="customer-search" value={d.customer} required extraClass="nl-pr-10"
+                    invalid={invalid('customer-search')} describedBy={describe('customer-search')}
+                    onQuery={(q) => setD((p) => ({ ...p, customer: q, customerId: '' }))}
+                    searchFromValue={!customerPicked}
+                    items={(q) => customers.filter((c) => `${c.name} ${c.id} ${placeOf(c)}`.toLowerCase().includes(q.toLowerCase()))}
+                    keyOf={(c) => c.id} between
+                    render={(c, q) => (
+                      <>
+                        <div className="nl-opt-main">
+                          <div className="nl-opt-name">{hl(c.name, q)}</div>
+                          <div className="nl-opt-sub">{hl(c.id, q)} · {placeOf(c)} · {c.terms}</div>
+                        </div>
+                        {customerBadge(c)}
+                      </>
+                    )}
+                    onPick={pickCustomer} placeholder="Search by name, ID or city" listLabel="Customers" icon={faMagnifyingGlass}
+                    none={(q) => `No customers match “${q}”. Try a customer ID or city.`}
+                    after={d.customer ? (
+                      <button
+                        type="button" className="nl-clear nl-fbtn" aria-label="Clear customer"
+                        onClick={() => { setD((p) => ({ ...p, customer: '', customerId: '' })); openCombo('customer-search'); }}
+                      >
+                        <Fa icon={faXmark} />
+                      </button>
+                    ) : null}
+                  />
+                  {errFor('customer')}
+                  {customer && customerPicked && (
+                    <p className="nl-info">
+                      <span>{customer.id}</span><span className="nl-sep" aria-hidden="true">|</span>
+                      <span>{placeOf(customer)}</span><span className="nl-sep" aria-hidden="true">|</span>
+                      <span>{customer.terms}</span>
+                      {customer.credit !== 'Credit hold' && (<><span className="nl-sep" aria-hidden="true">|</span><span className="nl-ok"><Fa icon={faCircleCheck} />Credit approved</span></>)}
+                    </p>
+                  )}
+                  {customer && customerPicked && customer.credit === 'Credit hold' && (
+                    <div className="nl-warn">
+                      <Fa icon={faTriangleExclamation} />
+                      <span><strong>Credit hold.</strong> You can create this load, but it can't be dispatched until accounting approves credit.</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="nl-lbl" htmlFor="nl-f-tender">Tender number <Req /></label>
+                  <input
+                    id="nl-f-tender" aria-required="true" className={cls('f-tender')} placeholder="From the rate con, e.g. 1098219" value={d.ref} {...field('f-tender')}
+                    onChange={(e) => set('ref', e.target.value)}
+                  />
+                  {errFor('tender')}
+                </div>
+                <div>
+                  <label className="nl-lbl" htmlFor="nl-f-contact">Contact name</label>
+                  <input id="nl-f-contact" className={cls('f-contact')} placeholder="Full name" value={d.contactName} onChange={(e) => { unauto('f-contact'); set('contactName', e.target.value); }} />
+                </div>
+                <div>
+                  <label className="nl-lbl" htmlFor="nl-f-email">Contact email</label>
+                  <input id="nl-f-email" type="email" className={cls('f-email')} placeholder="name@company.com" value={d.contactEmail} onChange={(e) => { unauto('f-email'); set('contactEmail', e.target.value); }} />
+                </div>
+                <p className="nl-note" style={{ gridColumn: '1 / -1' }}>Contact details fill in from the customer profile when you pick a customer.</p>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  {!carrierOpen ? (
+                    <button type="button" className="nl-addlink nl-fbtn" onClick={() => { setCarrierOpen(true); openCombo('carrier-search'); }}>
+                      <Fa icon={faPlus} />Add carrier
+                    </button>
+                  ) : (
+                    <div className="nl-carrier nl-g sm-2">
+                      <div>
+                        <div className="nl-row-between">
+                          <label className="nl-lbl is-flush" htmlFor="nl-carrier-search">Carrier <span className="nl-opt">(optional)</span></label>
+                          <button
+                            type="button" className="nl-textbtn nl-fbtn"
+                            onClick={() => { setD((p) => ({ ...p, brokered: false, carrier: '', carrierMc: '', carrierDot: '' })); setCarrierNew(false); setCarrierOpen(false); }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <Combo<Carrier & { isNew?: boolean }>
+                          id="carrier-search" value={d.carrier}
+                          onQuery={(q) => { setD((p) => ({ ...p, carrier: q, brokered: false, carrierMc: '', carrierDot: '' })); setCarrierNew(false); }}
+                          items={(q) => {
+                            const ql = q.toLowerCase();
+                            const list: (Carrier & { isNew?: boolean })[] = carrierList.filter((c) => `${c.name} ${c.mc} ${c.dot}`.toLowerCase().includes(ql));
+                            if (q && !carrierList.some((c) => c.name.toLowerCase() === ql)) list.push({ name: q, mc: '', dot: '', isNew: true });
+                            return list;
+                          }}
+                          keyOf={(c) => (c.isNew ? `new:${c.name}` : c.name)}
+                          render={(c) => (c.isNew ? (
+                            <>
+                              <span className="nl-opt-ico is-new"><Fa icon={faPlus} /></span>
+                              <div className="nl-opt-main"><div className="nl-opt-name is-new">Add new carrier “{c.name}”</div><div className="nl-opt-sub">Create it now — add MC # and insurance later</div></div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="nl-opt-ico"><Fa icon={faIdCard} /></span>
+                              <div className="nl-opt-main"><div className="nl-opt-name">{c.name}</div><div className="nl-opt-sub">{[c.mc, c.dot].filter((x) => x && x !== '—').join(' · ') || 'No MC # yet'}</div></div>
+                            </>
+                          ))}
+                          onPick={(c) => {
+                            setD((p) => ({ ...p, carrier: c.name, brokered: true, carrierMc: c.mc, carrierDot: c.dot }));
+                            setCarrierNew(Boolean(c.isNew));
+                          }}
+                          placeholder="Search by name or MC #, or type a new carrier" listLabel="Carriers" icon={faMagnifyingGlass} none={(q) => `No matches for “${q}”.`}
+                        />
+                        {d.brokered && (
+                          <p className="nl-info">
+                            {carrierNew
+                              ? <span className="nl-new"><Fa icon={faCirclePlus} />New carrier — will be added to your carrier list</span>
+                              : [d.carrierMc, d.carrierDot].filter((x) => x && x !== '—').map((x, k) => (
+                                <span key={x}>{k > 0 && <span className="nl-sep" aria-hidden="true">| </span>}{x}</span>
+                              ))}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* 3. Pickup */}
+            <section id="nl-sec-pickup" className="nl-sec">
+              <SecHead title="Pickup" sub="Where and when the freight is loaded." />
+              {pickups.map(({ s, i }, k) => stopCard(s, i, k > 0))}
+              <button type="button" className="nl-addstop nl-fbtn" onClick={() => addStop('Pickup')}><Fa icon={faPlus} /> Add another pickup</button>
+            </section>
+
+            {/* 4. Delivery */}
+            <section id="nl-sec-delivery" className="nl-sec">
+              <SecHead title="Delivery" sub="Where and when the freight is dropped off." />
+              {deliveries.map(({ s, i }, k) => stopCard(s, i, k > 0))}
+              <button type="button" className="nl-addstop nl-fbtn" onClick={() => addStop('Delivery')}><Fa icon={faPlus} /> Add another delivery</button>
+            </section>
+
+            {/* 5. Freight & equipment */}
+            <section id="nl-sec-freight" className="nl-sec">
+              <SecHead title="Freight & equipment" sub="What's being shipped, special handling, and the truck it needs." />
+              <div className="nl-card nl-stack-5">
+                <div className="nl-g sm-2 lg-4">
+                  <div className="sm-span-2">
+                    <label className="nl-lbl" htmlFor="nl-f-commodity">Commodity <Req /></label>
+                    <input id="nl-f-commodity" aria-required="true" className={cls('f-commodity')} placeholder="e.g. Packaged chemicals" value={d.commodity} {...field('f-commodity')}
+                      onChange={(e) => set('commodity', e.target.value)} />
+                    {errFor('commodity')}
+                  </div>
+                  <div>
+                    <label className="nl-lbl" htmlFor="nl-f-weight">Weight <Req /></label>
+                    <div className="nl-rel">
+                      <input id="nl-f-weight" inputMode="numeric" aria-required="true" className={`${cls('f-weight')} nl-pr-12`} placeholder="0" value={d.weight} {...field('f-weight')}
+                        onChange={(e) => set('weight', e.target.value.replace(/[^\d.,]/g, ''))}
+                        onBlur={(e) => set('weight', fmtInt(e.target.value))} />
+                      <span className="nl-suf">lbs</span>
+                    </div>
+                    {errFor('weight')}
+                  </div>
+                  <div>
+                    <label className="nl-lbl" htmlFor="nl-f-insurance">Value <span className="nl-opt">(optional)</span></label>
+                    <div className="nl-rel">
+                      <span className="nl-pre">$</span>
+                      <input id="nl-f-insurance" inputMode="numeric" className={`${cls('f-insurance')} nl-pl-7`} placeholder="0" value={d.value}
+                        onChange={(e) => set('value', e.target.value.replace(/[^\d.,]/g, ''))}
+                        onBlur={(e) => set('value', fmtInt(e.target.value))} />
+                    </div>
+                  </div>
+                  <div className="sm-span-2">
+                    <span id="nl-qty-label" className="nl-lbl">Quantity <span className="nl-opt">(optional)</span></span>
+                    <div className="nl-qty" role="group" aria-labelledby="nl-qty-label">
+                      <input id="nl-f-qty" inputMode="numeric" aria-label="Quantity" className="nl-inp" placeholder="0" value={d.pieces} onChange={(e) => set('pieces', e.target.value.replace(/\D/g, ''))} />
+                      <div className="nl-rel">
+                        <select id="nl-f-qty-unit" aria-label="Unit" className="nl-inp" value={d.packaging} onChange={(e) => set('packaging', e.target.value)}>
+                          {QTY_UNITS.map((u) => <option key={u}>{u}</option>)}
+                          {!QTY_UNITS.includes(d.packaging) && <option>{d.packaging}</option>}
+                        </select>
+                        <span className="nl-chev"><Fa icon={faChevronDown} /></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="sm-span-2">
+                    <span id="nl-pallet-label" className="nl-lbl">Pallet exchange</span>
+                    <Seg name="nl-pallet" label="nl-pallet-label" className="w-132" value={d.palletExchange ? 'yes' : 'no'} options={yesNo} onChange={(v) => set('palletExchange', v === 'yes')} />
+                  </div>
+                </div>
+
+                <div className="nl-g gap-3 md-2">
+                  <div className="nl-toggle">
+                    <div className="nl-toggle-row">
+                      <div>
+                        <p id="nl-temp-label" className="nl-toggle-title"><Fa icon={faSnowflakeRegular} />Temperature controlled</p>
+                        <p className="nl-toggle-sub">Requires a reefer and setpoint</p>
+                      </div>
+                      <Seg name="nl-temp" label="nl-temp-label" className="w-120 is-white" value={d.tempOn ? 'yes' : 'no'} options={yesNo}
+                        onChange={(v) => { set('tempOn', v === 'yes'); if (v === 'yes') later(() => focusKey('f-temp')); }} />
+                    </div>
+                    {d.tempOn && (
+                      <div className="nl-toggle-fields nl-g2">
+                        <div>
+                          <label className="nl-lbl" htmlFor="nl-f-temp">Setpoint <Req /></label>
+                          <div className="nl-rel">
+                            <input id="nl-f-temp" inputMode="numeric" className={`${cls('f-temp')} nl-pr-10`} placeholder="e.g. 34" value={d.temp} {...field('f-temp')}
+                              onChange={(e) => set('temp', e.target.value.replace(/[^\d.-]/g, ''))} />
+                            <span className="nl-suf">°F</span>
+                          </div>
+                          {errFor('temp')}
+                        </div>
+                        <div>
+                          <label className="nl-lbl" htmlFor="nl-f-temp-mode">Reefer mode</label>
+                          <div className="nl-rel">
+                            <select id="nl-f-temp-mode" className="nl-inp" value={d.reeferMode} onChange={(e) => set('reeferMode', e.target.value)}>
+                              <option>Continuous</option><option>Cycle</option>
+                            </select>
+                            <span className="nl-chev"><Fa icon={faChevronDown} /></span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="nl-toggle">
+                    <div className="nl-toggle-row">
+                      <div>
+                        <p id="nl-hz-label" className="nl-toggle-title"><Fa icon={faTriangleExclamation} />Hazmat</p>
+                        <p className="nl-toggle-sub">Needs placards and an endorsed driver</p>
+                      </div>
+                      <Seg name="nl-hazmat" label="nl-hz-label" className="w-120 is-white" value={d.hazmat ? 'yes' : 'no'} options={yesNo}
+                        onChange={(v) => { set('hazmat', v === 'yes'); if (v === 'yes') later(() => focusKey('f-un')); }} />
+                    </div>
+                    {d.hazmat && (
+                      <div className="nl-toggle-fields nl-g2">
+                        <div>
+                          <label className="nl-lbl" htmlFor="nl-f-un">UN number <Req /></label>
+                          <div className="nl-rel">
+                            <span className="nl-pre is-13">UN</span>
+                            <input id="nl-f-un" inputMode="numeric" maxLength={4} className={`${cls('f-un')} nl-pl-11`} placeholder="1203" value={d.unNumber} {...field('f-un')}
+                              onChange={(e) => set('unNumber', e.target.value.replace(/\D/g, ''))} />
+                          </div>
+                          {errFor('un')}
+                        </div>
+                        <div>
+                          <label className="nl-lbl" htmlFor="nl-f-hzclass">Hazard class <Req /></label>
+                          <div className="nl-rel">
+                            <select id="nl-f-hzclass" className={cls('f-hzclass')} value={d.hzClass} {...field('f-hzclass')} onChange={(e) => set('hzClass', e.target.value)}>
+                              <option value="">Select</option>
+                              {HAZ_CLASSES.map((c) => <option key={c}>{c}</option>)}
+                            </select>
+                            <span className="nl-chev"><Fa icon={faChevronDown} /></span>
+                          </div>
+                          {errFor('hzclass')}
+                        </div>
+                        <div className="nl-span-2">
+                          <label className="nl-lbl" htmlFor="nl-f-hzphone">24-hr emergency phone <span className="nl-opt">(optional)</span></label>
+                          <input id="nl-f-hzphone" type="tel" className="nl-inp" placeholder="(800) 000-0000" value={d.hzPhone} onChange={(e) => set('hzPhone', e.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="nl-subsec">
+                  <p className="nl-subsec-title">Equipment</p>
+                  <div className="nl-g sm-3">
+                    <div>
+                      <label className="nl-lbl" htmlFor="nl-f-equipment">Equipment type <Req /></label>
+                      <div className="nl-rel">
+                        <select id="nl-f-equipment" aria-required="true" className={cls('f-equipment')} value={d.equipment} {...field('f-equipment')}
+                          onChange={(e) => set('equipment', e.target.value)}>
+                          <option value="">Select type</option>
+                          {EQUIP_TYPES.map((t) => <option key={t}>{t}</option>)}
+                        </select>
+                        <span className="nl-chev"><Fa icon={faChevronDown} /></span>
+                      </div>
+                      {errFor('equipment')}
+                    </div>
+                    <div>
+                      <label className="nl-lbl" htmlFor="nl-f-length">Trailer length</label>
+                      <div className="nl-rel">
+                        <select id="nl-f-length" className="nl-inp" value={d.trailerLength} onChange={(e) => set('trailerLength', e.target.value)}>
+                          {LENGTHS.map((x) => <option key={x}>{x}</option>)}
+                          {!LENGTHS.includes(d.trailerLength) && <option>{d.trailerLength}</option>}
+                        </select>
+                        <span className="nl-chev"><Fa icon={faChevronDown} /></span>
+                      </div>
+                    </div>
+                    <div>
+                      <span id="nl-team-label" className="nl-lbl">Team service</span>
+                      <Seg name="nl-team" label="nl-team-label" className="w-132" value={d.team ? 'yes' : 'no'} options={yesNo} onChange={(v) => set('team', v === 'yes')} />
+                    </div>
+                  </div>
+                  {d.tempOn && d.equipment !== 'Reefer' && (
+                    <div className="nl-reefer">
+                      <span><Fa icon={faCircleInfo} />Temperature-controlled freight needs a Reefer.</span>
+                      <button type="button" className="nl-fbtn" onClick={() => { set('equipment', 'Reefer'); later(() => focusKey('f-equipment')); }}>Switch to Reefer</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* 6. Rate */}
+            <section id="nl-sec-rate" className="nl-sec">
+              <SecHead title="Rate" sub="What the carrier is paid for this load, in USD." />
+              <div className="nl-card nl-stack-5">
+                <div className="nl-g sm-3">
+                  <div>
+                    <label className="nl-lbl" htmlFor="nl-f-linehaul">Linehaul <Req /></label>
+                    {moneyInput('f-linehaul', 'lineHaul', true)}
+                    {errFor('linehaul')}
+                  </div>
+                  <div>
+                    <label className="nl-lbl" htmlFor="nl-f-fuel">Fuel surcharge</label>
+                    {moneyInput('f-fuel', 'fuel', false)}
+                  </div>
+                  <div>
+                    <p className="nl-lbl">Total rate</p>
+                    <div className="nl-total"><output aria-live="polite">{money(total)}</output></div>
+                    <p className="nl-hint">{charges.length ? `Includes ${charges.length} charge${charges.length > 1 ? 's' : ''} · ${money(chargeSum)}` : 'Linehaul + fuel + charges'}</p>
+                  </div>
+                </div>
+                <div className="nl-subsec">
+                  <div className="nl-charges-top">
+                    <div>
+                      <p id="nl-charges-label" className="nl-charges-title">Charges</p>
+                      <p className="nl-toggle-sub">Detention, lumper, layover, stop-off and other accessorials.</p>
+                    </div>
+                    <button
+                      id="nl-btn-add-charge" type="button" className="nl-btn-line nl-fbtn"
+                      onClick={() => { set('charges', [...charges, { type: '', amount: '' }]); later(() => focusKey(`chg-${charges.length}-type`)); }}
+                    >
+                      <Fa icon={faPlus} />Add charge
+                    </button>
+                  </div>
+                  {charges.length > 0 && (
+                    <div className="nl-charge-grid nl-charge-head" aria-hidden="true"><span>Charge type</span><span>Amount</span><span /></div>
+                  )}
+                  <ul className="nl-charge-list" aria-labelledby="nl-charges-label">
+                    {charges.map((c, k) => {
+                      const prob = submitted ? chargeProblem(c.type, c.amount) : null;
+                      const setC = (patch: Partial<typeof c>) => set('charges', charges.map((x, j) => (j === k ? { ...x, ...patch } : x)));
+                      return (
+                        <li key={k}>
+                          <div className="nl-charge-grid">
+                            <div>
+                              <label className="nl-sr" htmlFor={`nl-chg-${k}-type`}>Charge type</label>
+                              <input id={`nl-chg-${k}-type`} list="nl-charge-types" className="nl-inp" placeholder="Select or type a charge" value={c.type}
+                                aria-invalid={prob?.field === 'type' ? 'true' : 'false'} aria-describedby={prob?.field === 'type' ? `nl-chg-${k}-err` : undefined}
+                                onChange={(e) => setC({ type: e.target.value })} />
+                            </div>
+                            <div className="nl-rel">
+                              <label className="nl-sr" htmlFor={`nl-chg-${k}-amount`}>Amount</label>
+                              <span className="nl-pre">$</span>
+                              <input id={`nl-chg-${k}-amount`} inputMode="decimal" className="nl-inp nl-pl-7" placeholder="0.00" value={c.amount}
+                                aria-invalid={prob?.field === 'amount' ? 'true' : 'false'} aria-describedby={prob?.field === 'amount' ? `nl-chg-${k}-err` : undefined}
+                                onChange={(e) => setC({ amount: e.target.value.replace(/[^\d.,]/g, '') })} onBlur={(e) => setC({ amount: fmtMoney(e.target.value) })} />
+                            </div>
+                            <button
+                              type="button" className="nl-icon-btn nl-fbtn" aria-label="Remove charge"
+                              onClick={() => {
+                                set('charges', charges.filter((_, j) => j !== k));
+                                later(() => focusKey(charges.length > 1 ? `chg-${Math.min(k, charges.length - 2)}-type` : 'btn-add-charge'));
+                              }}
+                            >
+                              <Fa icon={faXmark} />
+                            </button>
+                          </div>
+                          {prob && <p id={`nl-chg-${k}-err`} className="nl-err"><Fa icon={faCircleExclamation} /><span>{prob.m}</span></p>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {charges.length === 0 && (
+                    <p className="nl-empty">No charges added. Use <span>Add charge</span> for anything beyond linehaul and fuel.</p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* 6b. LTL / Partial */}
+            <section id="nl-sec-ltl" className="nl-sec">
+              <SecHead title="LTL / Partial" sub="Whether this load has the truck to itself or shares it with other loads." />
+              <div className="nl-card nl-stack-4">
+                <div>
+                  <span id="nl-mode-label" className="nl-lbl">Load type</span>
+                  <Seg
+                    name="nl-mode" label="nl-mode-label" className="is-3" value={d.mode}
+                    options={[{ value: 'FTL', label: 'FTL', aria: 'FTL, full truckload' }, { value: 'LTL', label: 'LTL', aria: 'LTL, less than truckload' }, { value: 'Partial', label: 'Partial', aria: 'Partial' }]}
+                    onChange={(v) => {
+                      setD((p) => ({ ...p, mode: v as Draft['mode'], ltlLoad: v === 'Partial' ? p.ltlLoad : '' }));
+                      setLtlQuery('');
+                      if (v === 'Partial' && !d.ltlLoad) later(() => focusKey('ltl-search'));
+                    }}
+                  />
+                </div>
+                {d.mode === 'LTL' && (
+                  <div className="nl-blue-note">
+                    <Fa icon={faCircleInfo} />
+                    <span>LTL loads can be combined with partial loads. Choose LTL only when this load is to be picked up first and delivered last.</span>
+                  </div>
+                )}
+                {d.mode === 'Partial' && (
+                  <div>
+                    {!d.ltlLoad ? (
+                      <div>
+                        <label className="nl-lbl" htmlFor="nl-ltl-search">Connect to LTL load <Req /></label>
+                        <Combo<(typeof ltlLoads)[number]>
+                          id="ltl-search" value={ltlQuery} onQuery={setLtlQuery}
+                          invalid={invalid('ltl-search')} describedBy={describe('ltl-search')}
+                          items={(q) => ltlLoads.filter((x) => `${x.load.id} ${x.load.customer} ${x.load.route}`.toLowerCase().includes(q.toLowerCase()))}
+                          keyOf={(x) => x.load.id}
+                          render={(x) => (
+                            <>
+                              <span className="nl-opt-ico"><Fa icon={faLayerGroup} /></span>
+                              <div className="nl-opt-main">
+                                <div className="nl-opt-name">Load #{x.load.id} · LTL <span className="nl-opt-light">· {x.load.customer}</span></div>
+                                <div className="nl-opt-sub is-trunc">{x.load.route} · {x.date} · {x.space}</div>
+                              </div>
+                            </>
+                          )}
+                          onPick={(x) => { set('ltlLoad', x.load.id); touch('ltl-link'); later(() => document.getElementById('nl-ltl-change')?.focus()); }}
+                          placeholder="Search LTL loads by load #, customer or city" listLabel="LTL loads" icon={faMagnifyingGlass}
+                          none={(q) => (ltlLoads.length ? `No matches for “${q}”.` : 'There are no LTL loads to connect to yet.')}
+                        />
+                        {errFor('ltl-link')}
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="nl-lbl">Connected LTL load</p>
+                        <div className="nl-picked is-wrap">
+                          <div className="nl-picked-left">
+                            <span className="nl-picked-ico"><Fa icon={faLayerGroup} /></span>
+                            <div style={{ minWidth: 0 }}>
+                              <p className="nl-picked-1">Load #{d.ltlLoad} · LTL</p>
+                              <p className="nl-picked-2">
+                                {ltlLinked ? [ltlLinked.load.customer, ltlLinked.load.route, ltlLinked.date, ltlLinked.space].join(' · ')
+                                  : ltlGone ? [ltlGone.customer, ltlGone.route].join(' · ') : 'This load is no longer on the board.'}
+                              </p>
+                            </div>
+                          </div>
+                          <button id="nl-ltl-change" type="button" className="nl-change nl-fbtn" onClick={() => { set('ltlLoad', ''); setLtlQuery(''); openCombo('ltl-search'); }}>Change</button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="nl-blue-note mt-3">
+                      <Fa icon={faCircleInfo} />
+                      <span>Partial loads can only be connected to a LTL load. Choose partial only if this load is to be picked up last and delivered first.</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* 7. Truck & driver */}
+            <section id="nl-sec-truck" className="nl-sec">
+              <SecHead title="Truck & driver" sub="Optional — connect one of your trucks to assign it and its driver to this load." />
+              <div className="nl-card">
+                {!d.truck ? (
+                  <div>
+                    <label className="nl-lbl" htmlFor="nl-truck-search">Connect truck <span className="nl-opt">(optional)</span></label>
+                    <Combo<FleetTruck>
+                      id="truck-search" value={truckQuery} onQuery={setTruckQuery} padLeft="nl-pl-10"
+                      items={(q) => activeTrucks.filter((t) => `truck ${t.unit} ${trailerParts(trailerOf(t)).text} ${t.driver}`.toLowerCase().includes(q.toLowerCase()))}
+                      keyOf={(t) => t.id}
+                      render={(t) => {
+                        const tr = trailerParts(trailerOf(t));
+                        const dr = t.driver && t.driver !== 'Unassigned' ? t.driver : '';
+                        return (
+                          <>
+                            <span className="nl-opt-ico"><Fa icon={faTruck} /></span>
+                            <div className="nl-opt-main">
+                              <div className="nl-opt-name">Truck {t.unit} · {tr.text ? `Trailer ${tr.text}` : 'No trailer assigned'}</div>
+                              <div className="nl-opt-sub">{dr ? [dr, phoneOf(dr)].filter(Boolean).join(' · ') : 'No driver assigned'}</div>
+                            </div>
+                          </>
+                        );
+                      }}
+                      onPick={pickTruck} placeholder="Search by truck #, driver or trailer type" listLabel="Trucks" icon={faTruck}
+                      none={(q) => `No trucks match “${q}”. Try a truck # or driver name.`}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <p className="nl-lbl">Connected truck</p>
+                    <div className="nl-picked">
+                      <div className="nl-picked-left">
+                        <span className="nl-picked-ico"><Fa icon={faTruck} /></span>
+                        <div style={{ minWidth: 0 }}>
+                          <p className="nl-picked-1">Truck {d.truck}, {truckTrailer.text ? `Trailer ${truckTrailer.text}` : 'no trailer assigned'}</p>
+                          <p className="nl-picked-2">Driver: <b>{driverName || 'none assigned'}</b>, Contact phone: <b>{phoneOf(driverName) || 'not on file'}</b></p>
+                        </div>
+                      </div>
+                      <button
+                        id="nl-truck-change" type="button" className="nl-change nl-fbtn"
+                        onClick={() => { setD((p) => ({ ...p, truck: '', driver: '', trailer: '' })); setTextedAt(''); setTruckQuery(''); openCombo('truck-search'); }}
+                      >
+                        Change
+                      </button>
+                    </div>
+                    <div className="nl-dispatch-row">
+                      <p role="status" className="nl-dispatch-status">
+                        {textedAt
+                          ? <><Fa icon={faCircleCheck} className="is-ok" /><b>Texted to {driverName} at {textedAt}</b></>
+                          : <><Fa icon={faMessage} />Not sent to driver yet</>}
+                      </p>
+                      {driverName && (
+                        <button type="button" className="nl-dispatch-btn nl-fbtn" onClick={() => setDispatching(true)}>
+                          <Fa icon={faPaperPlane} /><span>{textedAt ? 'Resend to driver' : 'Dispatch to driver'}</span>
+                        </button>
+                      )}
+                    </div>
+                    {truckWarning && <div className="nl-warn mt-3"><Fa icon={faTriangleExclamation} /><span>{truckWarning}</span></div>}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* 8. Notes */}
+            <section id="nl-sec-notes" className="nl-sec is-last">
+              <SecHead title="Notes & directions" sub="Optional — anything the carrier or driver should know." />
+              <div className="nl-card nl-g sm-2">
+                <div>
+                  <label className="nl-lbl" htmlFor="nl-f-notes">Notes to carrier</label>
+                  <textarea id="nl-f-notes" rows={4} className="nl-inp" placeholder="e.g. Minimum 2 load locks, keep seal intact until receiver…" value={d.instructions}
+                    onChange={(e) => set('instructions', e.target.value)} />
+                </div>
+                <div>
+                  <label className="nl-lbl" htmlFor="nl-f-directions">Directions</label>
+                  <textarea id="nl-f-directions" rows={4} className="nl-inp" placeholder="Route or facility directions" value={d.directions} onChange={(e) => set('directions', e.target.value)} />
+                </div>
+              </div>
+            </section>
+          </form>
+        </main>
+
+        {/* Right: load summary */}
+        <aside className="nl-sum" aria-labelledby="nl-h-summary">
+          <h3 id="nl-h-summary">Load summary</h3>
+          <dl>
+            <div className="nl-sum-ids">
+              <div><dt>Load #</dt><dd>{loadNo}</dd></div>
+              <div><dt>Tender #</dt><dd className="is-med">{d.ref.trim() || <span className="is-unset-14">Not set</span>}</dd></div>
+            </div>
+            <div><dt>Customer</dt><dd className="is-strong">{customerPicked ? d.customer : unset('Not selected')}</dd></div>
+            <div>
+              <dt>Carrier</dt>
+              <dd>{d.brokered ? <>{d.carrier}{d.carrierMc && d.carrierMc !== '—' ? <span className="is-unset"> · {d.carrierMc}</span> : carrierNew ? <span className="is-unset"> · new</span> : null}</> : unset('Not added')}</dd>
+            </div>
+            <div>
+              <dt>Route</dt>
+              <dd>
+                <ol className="nl-route">
+                  {[...pickups, ...deliveries].map(({ s, i }) => (
+                    <li key={i}>
+                      <span className={`nl-route-dot ${isPickup(s) ? 'is-pu' : 'is-del'}`} aria-hidden="true" />
+                      <span className="nl-sr">{isPickup(s) ? 'Pickup' : 'Delivery'}: </span>
+                      <p>{placeText(s, isPickup(s) ? 'Pickup' : 'Delivery')}</p>
+                      <p className="nl-route-when">{whenText(s)}</p>
+                    </li>
+                  ))}
+                </ol>
+              </dd>
+            </div>
+            <div>
+              <dt>Truck & driver</dt>
+              <dd>
+                {d.truck
+                  ? <>Truck {d.truck}{truckTrailer.text ? ` · ${truckTrailer.text}` : ''}<span className="nl-sum-sub">{[driverName || 'No driver', phoneOf(driverName)].filter(Boolean).join(' · ')}</span></>
+                  : unset('Not connected')}
+              </dd>
+            </div>
+            <div>
+              <dt>Freight</dt>
+              <dd>
+                {freightParts.length ? freightParts.join(' · ') : unset('Not set')}
+                {(d.tempOn || d.hazmat) && (
+                  <div className="nl-chips">
+                    {d.tempOn && <span className="nl-chip"><Fa icon={faSnowflake} className="is-cold" />{d.temp.trim() !== '' ? `${d.temp.trim()}°F` : 'Temp'}</span>}
+                    {d.hazmat && <span className="nl-chip"><Fa icon={faTriangleExclamation} className="is-haz" />Hazmat{d.hzClass ? ` ${d.hzClass.split(' ')[0]}` : ''}</span>}
+                  </div>
+                )}
+              </dd>
+            </div>
+            <div><dt>Equipment</dt><dd>{d.equipment || unset('Type not set')} · {d.trailerLength} · {d.team ? 'Team' : 'Solo'}</dd></div>
+            <div>
+              <dt>Load type</dt>
+              <dd>
+                {d.mode === 'FTL' ? 'FTL'
+                  : d.mode === 'LTL' ? <>LTL <span className="is-unset">· picks up first, delivers last</span></>
+                    : <>Partial <span className="is-unset">· {d.ltlLoad ? `with Load #${d.ltlLoad}` : 'LTL load not connected'}</span></>}
+              </dd>
+            </div>
+            <div className="nl-sum-total"><dt>Total rate</dt><dd>{money(total)}</dd></div>
+          </dl>
+          <div className="nl-check">
+            <div className="nl-check-top"><h3>Required details</h3><span>{checkDone.length} of {checks.length}</span></div>
+            <ul className="nl-checklist">
+              {checks.map((c) => (isDone(c.rules) ? (
+                <li key={c.label} className="nl-check-done"><Fa icon={faCircleCheck} /><span>{c.label}</span><span className="nl-sr">(complete)</span></li>
+              ) : (
+                <li key={c.label}>
+                  <button
+                    type="button" className="nl-check-todo nl-fbtn"
+                    onClick={() => { touch(...c.rules); const first = c.rules.map((id) => ruleById.get(id)).find((r) => r?.result); if (first) focusRule(first); }}
+                  >
+                    <Fa icon={faCircle} className={`nl-c-ico${shownCheck(c.rules) ? ' is-red' : ''}`} />
+                    <span className="nl-c-label">{c.label}</span>
+                    <span className="nl-sr">(missing — go to field)</span>
+                    <Fa icon={faArrowRight} className="nl-c-arrow" />
+                  </button>
+                </li>
+              )))}
+            </ul>
+          </div>
+        </aside>
       </div>
-      {confirmDelete && load && <ConfirmDelete load={load} onConfirm={remove} onClose={() => setConfirmDelete(false)} />}
+
+      {/* Footer */}
+      <footer className="nl-foot">
+        {!confirm ? (
+          <div className="nl-foot-row">
+            <div className="nl-foot-left">
+              <p role="status" aria-live="polite" className="nl-status">{statusLine}</p>
+              <span className="nl-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> {editing ? 'save' : 'create'} <span className="nl-bar">|</span> <kbd>Esc</kbd> cancel</span>
+            </div>
+            <div className="nl-foot-btns">
+              {editing && <button type="button" className="nl-btn-danger-line nl-fbtn" onClick={() => setConfirm('delete')}>Delete load</button>}
+              <button id="nl-btn-cancel" type="button" className="nl-btn-ghost nl-fbtn" onClick={requestClose}>Cancel</button>
+              <button type="button" className="nl-btn-main nl-fbtn" onClick={create}>
+                <span>{editing ? 'Save changes' : 'Create load'}</span><Fa icon={faArrowRight} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="nl-foot-row" role="alertdialog" aria-labelledby="nl-confirm-title" aria-describedby="nl-confirm-desc">
+            <p className="nl-confirm-text">
+              <Fa icon={faTriangleExclamation} />
+              <span>
+                <strong id="nl-confirm-title">{confirm === 'delete' ? `Delete load ${loadNo}?` : editing ? 'Discard your changes?' : 'Discard this load?'}</strong>{' '}
+                <span id="nl-confirm-desc">
+                  {confirm === 'delete' ? 'It’s removed from the board, its load page and the planner. This can’t be undone.' : editing ? 'The changes you’ve made will be lost.' : 'The details you’ve entered will be lost.'}
+                </span>
+              </span>
+            </p>
+            <div className="nl-foot-btns">
+              <button id="nl-btn-keep" type="button" className="nl-btn-white nl-fbtn" onClick={keepEditing}>Keep editing</button>
+              <button type="button" className="nl-btn-red" onClick={confirm === 'delete' ? remove : discard}>{confirm === 'delete' ? 'Delete load' : 'Discard'}</button>
+            </div>
+          </div>
+        )}
+      </footer>
+
+      {dispatching && (
+        <DispatchTextDialog
+          driver={driverName} phone={phoneOf(driverName)} summary={buildSummary}
+          notes={[d.instructions.trim(), d.directions.trim()].filter(Boolean).join('\n')}
+          incomplete={[pickups[0]?.s.facility, pickups[0]?.s.date, deliveries[0]?.s.facility, deliveries[0]?.s.date, d.commodity].some((x) => !x?.trim())}
+          onSent={() => {
+            const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            setTextedAt(time);
+            setEvents((ev) => [...ev, `Load summary texted to ${driverName}`]);
+            toast(`Load summary texted to ${driverName}.`);
+          }}
+          onClose={() => { setDispatching(false); later(() => document.querySelector<HTMLButtonElement>('.nl-dispatch-btn')?.focus()); }}
+        />
+      )}
     </dialog>
   );
 }

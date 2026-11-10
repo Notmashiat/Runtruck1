@@ -316,6 +316,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.21',
+    date: '2026-11-09',
+    title: 'The redesigned New Load popup',
+    changes: [
+      {
+        id: 'load-form-v3', kind: 'Updated', section: 'Loads', title: 'New Load and Edit load redesigned (live for every company)',
+        details: 'New Load is one scrolling form with a section menu on the left (showing what each section still needs), a progress bar, and a live load summary with a Required details checklist on the right. It covers the rate confirmation and other documents (each filed under a category), load details with the customer’s credit status and an optional carrier, pickups and deliveries (first come, first served windows or appointments; more than one of each), freight and equipment (temperature setpoint, hazmat UN number and class, trailer length, team service), the rate with accessorial charges, LTL / partial loads (a partial connects to an LTL load, with its pallet space), the truck and its driver, and notes. Dispatch to driver texts the load to the driver through the company’s own Twilio account (Settings › Integrations, new); without one it asks to connect a provider. A facility typed in that is not saved yet is added to Facilities, and a new carrier to the carrier list. Customers get a Credit status (a load for a customer on credit hold can’t be dispatched) and trucks an Assigned trailer. This replaced the earlier New Load popups for every company at once.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

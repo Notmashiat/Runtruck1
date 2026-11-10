@@ -37,7 +37,7 @@ const ABOUT: Record<LoadStatus, string> = {
 // is what invoicing and driver pay go by.
 // `to` opens it with a new status already chosen (a pipeline move).
 export function LoadStatusDialog({ load, to, onClose }: { load: Load; to?: LoadStatus; onClose: () => void }) {
-  const { updateLoad } = useAppShell();
+  const { updateLoad, customers } = useAppShell();
   const today = todayIso();
   // Release 1.12: 'Booked' exists, and Dispatched means the driver has set off.
   const booking = isLive('load-pipeline-moves');
@@ -49,9 +49,14 @@ export function LoadStatusDialog({ load, to, onClose }: { load: Load; to?: LoadS
   const [note, setNote] = useState('');
 
   const needsCover = !UNCOVERED_OK.includes(status) && !covered(load);
+  // Release 1.21: a customer on credit hold can have loads, but they are not
+  // dispatched until accounting approves credit (CRM › the customer).
+  const onHold = !UNCOVERED_OK.includes(status) && UNCOVERED_OK.includes(current)
+    && customers.some((c) => c.name === load.customer && c.credit === 'Credit hold');
   const future = isDelivered(status) && deliveredOn > today;
   const beforePickup = isDelivered(status) && Boolean(load.pickupDate) && deliveredOn < (load.pickupDate ?? '');
   const problem = needsCover ? 'Assign a driver or a partner carrier first (Edit load).'
+    : onHold ? `${load.customer} is on credit hold: the load can’t be dispatched until accounting approves credit.`
     : isDelivered(status) && !deliveredOn ? 'Enter the day it was delivered.'
       : future ? 'The delivery day cannot be in the future.'
         : beforePickup ? `The delivery day cannot be before the pickup (${fmtDate(load.pickupDate)}).` : '';

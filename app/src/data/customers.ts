@@ -22,6 +22,10 @@ export const INDUSTRIES = [
 export const STANDINGS: Standing[] = ['Key account', 'Growing', 'New', 'At risk'];
 export const STANDING_TAG: Record<Standing, string> = { 'Key account': 'tag-accent', Growing: 'tag-neutral', New: 'tag-green', 'At risk': 'tag-outline' };
 export const CUSTOMER_TERMS = ['Due on receipt', 'Net 15', 'Net 30', 'Net 45', 'Net 60'];
+// Whether accounting has approved the customer's credit. A load for a customer
+// on credit hold can be created but not dispatched (release 1.21).
+export const CREDIT_STATUSES = ['Approved', 'Credit hold'] as const;
+export type CreditStatus = (typeof CREDIT_STATUSES)[number];
 export const CUSTOMER_PAY = ['ACH', 'Check', 'Wire', 'Credit card', 'Through our factoring company'];
 export const INVOICE_DELIVERY = ['Email', 'Customer AP portal', 'Mail', 'Through our factoring company'];
 export const CUSTOMER_EQUIPMENT = ['Dry van', 'Reefer', 'Flatbed', 'Step deck', 'Conestoga', 'Tanker', 'Intermodal', 'Power only'];
@@ -68,6 +72,8 @@ export interface CustomerRecord {
   zip: string;
   terms: string;
   creditLimit: number;
+  // Missing on customers saved before release 1.21: Approved.
+  credit?: CreditStatus;
   payMethod: string;
   invoiceDelivery: string;
   podRequired: boolean;
@@ -139,7 +145,7 @@ export function blankCustomerForm(today: string, rep: string): FormValues {
     name: '', legalName: '', type: 'Shipper', industry: '', standing: 'New', since: today, salesRep: rep, mc: '', dot: '', ein: '', website: '',
     contact: '', contactTitle: '', email: '', phone: '', shippingContact: '', shippingPhone: '', afterHoursPhone: '',
     billTo: '', attn: '', billingEmail: '', billingPhone: '', street: '', city: '', state: '', zip: '',
-    terms: 'Net 30', creditLimit: '', payMethod: 'ACH', invoiceDelivery: 'Email', podRequired: 'Yes', invoiceInstructions: '',
+    terms: 'Net 30', creditLimit: '', credit: 'Approved', payMethod: 'ACH', invoiceDelivery: 'Email', podRequired: 'Yes', invoiceInstructions: '',
     equipment: [], commodities: '', lanes: '', needs: [], instructions: '', onFile: [], notes: '',
   };
 }
@@ -150,7 +156,7 @@ export function customerToForm(c: CustomerRecord): FormValues {
     mc: c.mc, dot: c.dot, ein: c.ein, website: c.website, contact: c.contact, contactTitle: c.contactTitle, email: c.email, phone: c.phone,
     shippingContact: c.shippingContact, shippingPhone: c.shippingPhone, afterHoursPhone: c.afterHoursPhone,
     billTo: c.billTo, attn: c.attn, billingEmail: c.billingEmail, billingPhone: c.billingPhone, street: c.street, city: c.city, state: c.state, zip: c.zip,
-    terms: c.terms, creditLimit: c.creditLimit ? String(c.creditLimit) : '', payMethod: c.payMethod, invoiceDelivery: c.invoiceDelivery,
+    terms: c.terms, creditLimit: c.creditLimit ? String(c.creditLimit) : '', credit: c.credit ?? 'Approved', payMethod: c.payMethod, invoiceDelivery: c.invoiceDelivery,
     podRequired: c.podRequired ? 'Yes' : 'No', invoiceInstructions: c.invoiceInstructions,
     equipment: [...c.equipment], commodities: c.commodities, lanes: c.lanes, needs: [...c.needs], instructions: c.instructions, onFile: [...c.onFile], notes: c.notes,
   };
@@ -188,6 +194,7 @@ export function customerFromForm(v: FormValues, id: string, documents: BillDocum
     zip: str(v, 'zip'),
     terms: str(v, 'terms'),
     creditLimit: Number(str(v, 'creditLimit').replace(/[$,]/g, '')) || 0,
+    credit: str(v, 'credit') === 'Credit hold' ? 'Credit hold' : 'Approved',
     payMethod: str(v, 'payMethod'),
     invoiceDelivery: str(v, 'invoiceDelivery'),
     podRequired: str(v, 'podRequired') !== 'No',

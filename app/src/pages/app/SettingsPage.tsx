@@ -21,13 +21,15 @@ import {
 import { defaultSettings, fillTemplate, useSettings } from '../../lib/settingsStore';
 import { isLive } from '../../lib/releases';
 import { ExportPanel } from '../../components/ExportPanel';
+import { e164, sendText, twilioConnected } from '../../lib/sms';
 
-type SectionKey = 'profile' | 'company' | 'invoicing' | 'messages' | 'operations' | 'alerts' | 'team' | 'security' | 'appearance' | 'export' | 'data';
+type SectionKey = 'profile' | 'company' | 'invoicing' | 'messages' | 'integrations' | 'operations' | 'alerts' | 'team' | 'security' | 'appearance' | 'export' | 'data';
 const SECTIONS: { key: SectionKey; title: string; about: string }[] = [
   { key: 'profile', title: 'Profile', about: 'Your name and contact details, used in the app and on emails you send.' },
   { key: 'company', title: 'Company', about: 'Your carrier details, printed on invoices and in emails.' },
   { key: 'invoicing', title: 'Invoicing & payments', about: 'Invoice numbers, terms, surcharges, late fees and how customers pay you.' },
   { key: 'messages', title: 'Messages', about: 'The emails and texts RunTruck prepares for invoices and reminders.' },
+  { key: 'integrations', title: 'Integrations', about: 'Connect your own text-message provider so RunTruck can text loads to drivers.' },
   { key: 'operations', title: 'Operations', about: 'Terminals, warning thresholds and detention defaults.' },
   { key: 'alerts', title: 'Alerts', about: 'What the dashboard’s Needs attention list shows.' },
   { key: 'team', title: 'Team', about: 'Who works in RunTruck and what they do.' },
@@ -43,7 +45,7 @@ const digits = (s: string) => s.replace(/\D/g, '');
 // — shared pieces —
 
 // A section edited as a draft: Save or Discard at the bottom once it changes.
-function useSection<K extends 'profile' | 'company' | 'invoicing' | 'messages' | 'operations'>(k: K) {
+function useSection<K extends 'profile' | 'company' | 'invoicing' | 'messages' | 'operations' | 'integrations'>(k: K) {
   const [s, update] = useSettings();
   const [draft, setDraft] = useState<Settings[K]>(() => structuredCopy(s[k]));
   const [tried, setTried] = useState(false);
@@ -403,6 +405,72 @@ function Messages() {
         </Group>
       )}
       <SaveBar dirty={sec.dirty} savedAt={sec.savedAt} onSave={() => sec.save(problems.length === 0)} onDiscard={sec.discard} problems={sec.tried ? problems : undefined} />
+    </>
+  );
+}
+
+// Release 1.21: the company's Twilio account, for texting loads to drivers
+// (New Load › Dispatch to driver). The Auth Token stays in this company's
+// settings and is sent only to RunTruck's own server function with each text.
+function Integrations() {
+  const sec = useSection('integrations');
+  const d = sec.draft;
+  const [saved] = useSettings();
+  const [testTo, setTestTo] = useState(saved.profile.phone);
+  const [testing, setTesting] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [testError, setTestError] = useState('');
+  const filled = [d.twilioSid, d.twilioToken, d.twilioFrom].map((x) => x.trim());
+  const anyFilled = filled.some(Boolean);
+  const problems = [
+    anyFilled && !/^AC[0-9a-fA-F]{32}$/.test(filled[0]) && 'Account SID starts with AC and has 34 characters',
+    anyFilled && !filled[1] && 'Enter the Auth Token',
+    anyFilled && !e164(filled[2]) && 'Sending number is not a valid phone number',
+  ].filter(Boolean) as string[];
+  const connected = twilioConnected(saved.integrations);
+  const test = async () => {
+    setTesting('sending');
+    setTestError('');
+    const error = await sendText(testTo, `RunTruck test message from ${saved.company.name || 'your company'}: texting drivers is connected.`, saved.integrations);
+    setTesting(error ? 'idle' : 'sent');
+    setTestError(error ?? '');
+  };
+  return (
+    <>
+      <Group title="Twilio (text messages)" about="Texts to drivers go out from your own Twilio number. Find these in the Twilio Console, on the Account Info panel.">
+        <p className={connected ? 'ui-note' : 'ui-stop-meta'}>{connected ? `Connected. Texts are sent from ${saved.integrations.twilioFrom}.` : 'Not connected. Until it is, sending a text asks you to connect a provider.'}</p>
+        <div className="ui-form-grid">
+          <Field label="Account SID" error={err(sec.tried, anyFilled && !/^AC[0-9a-fA-F]{32}$/.test(filled[0]), 'Starts with AC, 34 characters')}>
+            <input className="ui-input" autoComplete="off" spellCheck={false} placeholder="AC…" value={d.twilioSid} onChange={(e) => sec.set('twilioSid', e.target.value.trim())} />
+          </Field>
+          <Field label="Auth Token" help="Kept in this company’s settings; anyone who can open Integrations can change it." error={err(sec.tried, anyFilled && !filled[1], 'Required')}>
+            <input className="ui-input" type="password" autoComplete="new-password" spellCheck={false} value={d.twilioToken} onChange={(e) => sec.set('twilioToken', e.target.value.trim())} />
+          </Field>
+          <Field label="Sending number" help="Your Twilio phone number, e.g. +1 209 555 0100." error={err(sec.tried, anyFilled && !e164(filled[2]), 'Not a valid phone number')}>
+            <input className="ui-input" type="tel" value={d.twilioFrom} onChange={(e) => sec.set('twilioFrom', e.target.value)} />
+          </Field>
+        </div>
+        {anyFilled && (
+          <button type="button" className="ui-link" style={{ alignSelf: 'flex-start' }} onClick={() => sec.setDraft({ twilioSid: '', twilioToken: '', twilioFrom: '' })}>
+            Disconnect (clear these)
+          </button>
+        )}
+      </Group>
+      {connected && !sec.dirty && (
+        <Group title="Send a test text" about="Checks the connection by texting this number.">
+          <div className="ui-form-grid">
+            <Field label="Text this number" error={testError || undefined}>
+              <input className="ui-input" type="tel" value={testTo} onChange={(e) => { setTestTo(e.target.value); setTesting('idle'); }} />
+            </Field>
+          </div>
+          <button type="button" className="ui-btn" style={{ alignSelf: 'flex-start' }} disabled={testing === 'sending'} onClick={test}>
+            {testing === 'sending' ? 'Sending…' : testing === 'sent' ? 'Sent ✓ Send again' : 'Send test text'}
+          </button>
+        </Group>
+      )}
+      <SaveBar
+        dirty={sec.dirty} savedAt={sec.savedAt} onDiscard={sec.discard} problems={sec.tried ? problems : undefined}
+        onSave={() => sec.save(problems.length === 0, (next) => ({ ...next, integrations: { ...next.integrations, twilioFrom: e164(next.integrations.twilioFrom) || next.integrations.twilioFrom.trim() } }))}
+      />
     </>
   );
 }
@@ -865,10 +933,11 @@ export function SettingsPage() {
   const navigate = useNavigate();
   // Profile, Security and Appearance are everyone's; company settings need permission.
   // Export data arrived in release 1.2.
-  const allowed = SECTIONS.filter((s) => can(PERSONAL_SETTINGS.includes(s.key) ? 'settings' : `settings/${s.key}`) && (s.key !== 'export' || isLive('settings-export')));
+  // Integrations goes with the Messages permission (it is how texts are sent).
+  const allowed = SECTIONS.filter((s) => can(PERSONAL_SETTINGS.includes(s.key) ? 'settings' : `settings/${s.key === 'integrations' ? 'messages' : s.key}`) && (s.key !== 'export' || isLive('settings-export')));
   const current = allowed.find((s) => s.key === section) ?? allowed[0];
   const body: Record<SectionKey, ReactNode> = {
-    profile: <Profile />, company: <Company />, invoicing: <Invoicing />, messages: <Messages />, operations: <Operations />,
+    profile: <Profile />, company: <Company />, invoicing: <Invoicing />, messages: <Messages />, integrations: <Integrations />, operations: <Operations />,
     alerts: <Alerts />, team: <Team />, security: <Security />, appearance: <Appearance />, export: <ExportPanel />, data: <DataSection />,
   };
   return (

@@ -143,7 +143,7 @@ export function DriverDialog({ driver, onClose }: { driver?: FleetDriver; onClos
 
 // — truck (power unit) —
 
-function truckSections(driverNames: string[], takenUnits: string[], takenVins: string[]): SectionSpec[] {
+function truckSections(driverNames: string[], takenUnits: string[], takenVins: string[], trailerUnits: string[]): SectionSpec[] {
   const leased = (v: FormValues) => ['Leased', 'Lease-purchase'].includes(val(v, 'ownership'));
   return [
     {
@@ -154,6 +154,8 @@ function truckSections(driverNames: string[], takenUnits: string[], takenVins: s
         { key: 'status', label: 'Status', type: 'select', required: true, options: TRUCK_STATUSES },
         { key: 'ownership', label: 'Ownership', type: 'select', required: true, options: TRUCK_OWNERSHIP },
         { key: 'driver', label: 'Assigned driver', type: 'select', options: driverNames },
+        // Release 1.21: the trailer it pulls, shown when the truck is put on a load.
+        { key: 'trailer', label: 'Assigned trailer', type: 'select', options: trailerUnits },
         { key: 'terminal', label: 'Home terminal', type: 'select', required: true, options: TERMINALS },
       ],
     },
@@ -233,7 +235,7 @@ export function TruckDialog({ truck, onClose }: { truck?: FleetTruck; onClose: (
     <RecordDialog
       heading={truck ? `Edit unit ${truck.unit}` : 'New unit'}
       saveLabel={truck ? 'Save changes' : 'Add unit'}
-      sections={truckSections(driverNames, others.map((t) => t.unit), takenVins)}
+      sections={truckSections(driverNames, others.map((t) => t.unit), takenVins, trailers.filter((t) => !t.archived || t.unit === val(truck?.details ?? {}, 'trailer')).map((t) => t.unit))}
       initial={initial}
       isNew={!truck}
       archived={truck?.archived}

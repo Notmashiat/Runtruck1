@@ -64,6 +64,9 @@ export interface Settings {
   alerts: Record<AlertKey, boolean>;
   team: TeamMember[];
   appearance: { theme: ThemeChoice; accent: Accent; textSize: TextSize; density: Density; startPage: StartPage };
+  // Release 1.21: the company's own text-message provider (Twilio), used to
+  // text loads to drivers. Empty until the company connects it.
+  integrations: { twilioSid: string; twilioToken: string; twilioFrom: string };
 }
 
 export const TIME_ZONES = [
@@ -138,6 +141,7 @@ export const DEFAULT_SETTINGS: Settings = {
     { id: 'U-5', name: 'Daniel Soto', email: 'daniel.soto@sunridgefreight.com', phone: '(209) 555-0108', role: 'Safety & compliance', active: true },
   ],
   appearance: { theme: 'Light', accent: 'Blue', textSize: 'Default', density: 'Comfortable', startPage: 'dashboard' },
+  integrations: { twilioSid: '', twilioToken: '', twilioFrom: '' },
 };
 
 // What a client company's settings start from: its entry in the client
@@ -205,6 +209,7 @@ export function mergeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): Set
     alerts: obj(d.alerts, r.alerts),
     team: Array.isArray(r.team) ? r.team.filter((m) => m && typeof m.id === 'string' && typeof m.name === 'string' && typeof m.email === 'string' && typeof m.role === 'string') : d.team.map((m) => ({ ...m })),
     appearance: obj(d.appearance, r.appearance),
+    integrations: obj(d.integrations, r.integrations),
   };
 }
 

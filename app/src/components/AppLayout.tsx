@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Toaster } from './Toaster';
 import { StorageBanner, TrialBanner } from './StatusBanners';
 import { AppShellProvider } from '../context/AppShellContext';
 import { Suspense, useEffect } from 'react';
@@ -63,6 +64,7 @@ export function AppLayout() {
             </ErrorBoundary>
           </main>
         </div>
+        <Toaster />
       </div>
     </AppShellProvider>
   );
