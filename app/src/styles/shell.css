@@ -41,42 +41,48 @@
 }
 
 :root[data-theme="dark"] {
+  /* Release 1.24: near-black, neutral greys (no blue tint), cards edged with
+     a thin line, brighter text. */
   color-scheme: dark;
-  --ui-bg: #0f141c;
-  --ui-card: #171e2a;
-  --ui-border: #273142;
-  --ui-row: #222c3a;
-  --ui-thead: #1d2634;
-  --ui-expand: #1b2330;
-  --ui-hover: #1f2836;
-  --ui-tab-hover: #1c2740;
-  --ui-row-hover: #1c2431;
-  --ui-filter-bg: #111823;
-  --ui-track: #273142;
-  --ui-dash: #34405a;
-  --ui-text: #e6e9ef;
-  --ui-text-2: #b8c0cc;
-  --ui-muted: #8b95a6;
+  --ui-bg: #050505;
+  --ui-card: #111111;
+  --ui-border: #242424;
+  --ui-row: #1d1d1d;
+  --ui-thead: #171717;
+  --ui-expand: #161616;
+  --ui-hover: #1b1b1b;
+  --ui-tab-hover: #1c1d24;
+  --ui-row-hover: #171717;
+  --ui-filter-bg: #0b0b0b;
+  --ui-track: #262626;
+  --ui-dash: #333336;
+  --ui-text: #f4f4f5;
+  --ui-text-2: #c7c7cc;
+  --ui-muted: #8e8e96;
   --ui-primary: #5b8bff;
   --ui-primary-hover: #7aa2ff;
-  --ui-primary-soft: #1f2f52;
-  --ui-on-primary: #0f141c;
+  --ui-primary-soft: #18223d;
+  --ui-on-primary: #050505;
   --ui-amber: #f2b45c;
-  --ui-amber-soft: #3a2b12;
+  --ui-amber-soft: #2c210f;
   --ui-orange: #f5913e;
   --ui-green: #5ccb86;
-  --ui-green-soft: #12301d;
-  --ui-gray-soft: #273142;
-  --ui-nav-pill: #2b3648;
+  --ui-green-soft: #0f2617;
+  --ui-gray-soft: #232323;
+  --ui-nav-pill: #1f1f1f;
   --ui-red: #ff8a80;
-  --ui-red-soft: #3a1c1a;
+  --ui-red-soft: #2e1614;
   --ui-purple: #b79bff;
-  --ui-purple-soft: #2a2145;
+  --ui-purple-soft: #221b38;
   --ui-teal: #5fd4c4;
-  --ui-teal-soft: #12302d;
-  --ui-shadow: rgba(0, 0, 0, 0.5);
-  --ui-overlay: rgba(0, 0, 0, 0.6);
-  --ui-island-shadow: 0 0 0 1px #222b3a, 0 8px 24px rgba(0, 0, 0, 0.35);
+  --ui-teal-soft: #0e2624;
+  --ui-shadow: rgba(0, 0, 0, 0.6);
+  --ui-overlay: rgba(0, 0, 0, 0.7);
+  --ui-island-shadow: 0 0 0 1px #1f1f1f, 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+/* On the near-black page every card has a thin edge, as in the reference. */
+:root[data-theme="dark"] :is(.ui-card, .ui-kpi, .ui-tabs, .dash-card, .dash-empty-all, .set-nav, .set-group) {
+  outline: 1px solid var(--ui-border); outline-offset: -1px;
 }
 
 .ui-shell {
@@ -568,7 +574,7 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 :root[data-theme="dark"][data-accent="green"] { --ui-primary: #4cc985; --ui-primary-hover: #7ad9a3; --ui-primary-soft: #173a28; }
 :root[data-theme="dark"][data-accent="purple"] { --ui-primary: #9b86ff; --ui-primary-hover: #b6a6ff; --ui-primary-soft: #2a2352; }
 :root[data-theme="dark"][data-accent="orange"] { --ui-primary: #ff9a62; --ui-primary-hover: #ffb58a; --ui-primary-soft: #3d2417; }
-:root[data-theme="dark"][data-accent="slate"] { --ui-primary: #94a3b8; --ui-primary-hover: #b4c0cf; --ui-primary-soft: #263041; }
+:root[data-theme="dark"][data-accent="slate"] { --ui-primary: #a1a1aa; --ui-primary-hover: #c4c4ca; --ui-primary-soft: #26262a; }
 .ui-shell { zoom: var(--ui-zoom, 1); height: calc(100vh / var(--ui-zoom, 1)); }
 :root[data-density="compact"] .ui-table td { padding-top: 8px; padding-bottom: 8px; }
 :root[data-density="compact"] .ui-table th, :root[data-density="compact"] .ui-sort-btn { padding-top: 8px; padding-bottom: 8px; }

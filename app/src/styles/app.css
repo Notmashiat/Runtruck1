@@ -8,22 +8,22 @@
    dark tokens live in shell.css. Toggled from Settings › Appearance. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-bg: #0f141c;
-  --color-surface: #171e2a;
-  --color-text: #e6e9ef;
+  --color-bg: #050505;
+  --color-surface: #111111;
+  --color-text: #f4f4f5;
   --color-accent: #7aa2ff;
   --color-accent-2: #8fb0d8;
-  --color-divider: color-mix(in srgb, #e6e9ef 16%, transparent);
+  --color-divider: color-mix(in srgb, #f4f4f5 14%, transparent);
 
-  --color-neutral-100: #1a2130;
-  --color-neutral-200: #232c3b;
-  --color-neutral-300: #2f3a4b;
-  --color-neutral-400: #4a5568;
-  --color-neutral-500: #6b7687;
-  --color-neutral-600: #8b96a6;
-  --color-neutral-700: #aab4c2;
-  --color-neutral-800: #cbd3dd;
-  --color-neutral-900: #e6e9ef;
+  --color-neutral-100: #161616;
+  --color-neutral-200: #1f1f1f;
+  --color-neutral-300: #2b2b2e;
+  --color-neutral-400: #46464c;
+  --color-neutral-500: #68686f;
+  --color-neutral-600: #8e8e96;
+  --color-neutral-700: #afafb6;
+  --color-neutral-800: #d1d1d6;
+  --color-neutral-900: #f4f4f5;
 
   --color-accent-100: #1c2740;
   --color-accent-200: #22324f;

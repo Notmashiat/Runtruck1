@@ -25,19 +25,19 @@
   color-scheme: dark;
   --nl-a50: #1e2542; --nl-a100: #262f55; --nl-a200: #36427a; --nl-a300: #4d5aa3; --nl-a400: #7383e0;
   --nl-a500: #8494ea; --nl-a600: #6e7fdb; --nl-a700: #b3bdf3;
-  --nl-ink: #e6e9ef; --nl-mute: #9aa3b4; --nl-line: #2b3546; --nl-canvas: #111823;
+  --nl-ink: #f4f4f5; --nl-mute: #9a9aa2; --nl-line: #262626; --nl-canvas: #0b0b0b;
   --nl-sage50: #12301d; --nl-sage100: #173a28; --nl-sage500: #5ccb86; --nl-sage600: #7ad9a3;
   --nl-sand50: #3a2b12; --nl-sand500: #f2b45c; --nl-sand700: #f5c983;
-  --nl-blush: #f0a0a0; --nl-s300: #3d4a5e; --nl-s400: #6b7689; --nl-s500: #8b95a6;
+  --nl-blush: #f0a0a0; --nl-s300: #3a3a3f; --nl-s400: #6a6a72; --nl-s500: #8e8e96;
   --nl-red50: #3a1c1a; --nl-red100: #4a2321; --nl-red200: #61302c; --nl-red500: #f87171; --nl-red600: #dc3b3b; --nl-red700: #ff9a90;
   --nl-blue50: #172342; --nl-blue600: #6f9bff; --nl-blue700: #8fb0ff; --nl-blue900: #d3e0ff;
   --nl-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   --nl-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
-  --nl-surface: #171e2a; --nl-field: #121925; --nl-soft: #131a25; --nl-hover: rgba(255, 255, 255, 0.05); --nl-glass: rgba(23, 30, 42, 0.95);
-  --nl-drop-bg: rgba(110, 127, 219, 0.08); --nl-blush-bg: #3a2024; --nl-mark: #5a4a12; --nl-a-hover: #8494ea; --nl-red-hover: #c53030;
+  --nl-surface: #111111; --nl-field: #0b0b0b; --nl-soft: #0d0d0d; --nl-hover: rgba(255, 255, 255, 0.05); --nl-glass: rgba(17, 17, 17, 0.95);
+  --nl-drop-bg: rgba(110, 127, 219, 0.08); --nl-blush-bg: #2e1719; --nl-mark: #5a4a12; --nl-a-hover: #8494ea; --nl-red-hover: #c53030;
 }
 :root[data-theme="dark"] .nl::backdrop { background: rgba(0, 0, 0, 0.55); }
-:root[data-theme="dark"] :is(.nl, .nl-dp, .nl-cf) { box-shadow: 0 0 0 1px #2b3546, 0 30px 80px -20px rgba(0, 0, 0, 0.7); }
+:root[data-theme="dark"] :is(.nl, .nl-dp, .nl-cf) { box-shadow: 0 0 0 1px #262626, 0 30px 80px -20px rgba(0, 0, 0, 0.7); }
 /* The app's headings are drawn a little tighter; the design's are not. */
 .nl :is(h1, h2, h3), .nl-dp h2 { letter-spacing: normal; font-family: inherit; }
 /* Resets with no weight (:where), so every rule below wins over them. */

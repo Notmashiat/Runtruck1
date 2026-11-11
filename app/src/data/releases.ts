@@ -349,6 +349,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.24',
+    date: '2026-11-10',
+    title: 'A darker dark mode',
+    changes: [
+      {
+        id: 'dark-v2', kind: 'Updated', section: 'Everywhere', title: 'Dark mode is near-black (live for every company)',
+        details: 'Dark mode now uses a near-black page with charcoal cards edged by a thin line, neutral greys instead of blue-grey, and brighter text, across the app, the popups and the website. The accent colour (Settings › Appearance) is unchanged. Light mode is unchanged.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
