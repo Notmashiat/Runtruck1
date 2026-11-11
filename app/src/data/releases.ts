@@ -327,6 +327,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.22',
+    date: '2026-11-10',
+    title: 'Floating sidebar and top bar',
+    changes: [
+      {
+        id: 'floating-shell', kind: 'Updated', section: 'Everywhere', title: 'Light grey pages with the sidebar and top bar on floating cards (live for every company)',
+        details: 'The page behind the cards is light grey again (release 1.20 had made it white). The sidebar, the search and the top-right buttons each sit on their own white card with rounded corners and a soft shadow, away from the edges of the window: the search on the left, and the date and time, a light / dark switch, Filters and the page’s buttons (such as + New Load) together on the right. The switch changes the theme for this account straight away, the same as Settings › Appearance › Theme.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
