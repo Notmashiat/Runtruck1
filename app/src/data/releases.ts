@@ -338,6 +338,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.23',
+    date: '2026-11-10',
+    title: 'The redesigned New Invoice popup',
+    changes: [
+      {
+        id: 'invoice-form-v2', kind: 'Updated', section: 'Accounting', title: 'New Invoice and Edit invoice redesigned, with a live preview of the invoice (live for every company)',
+        details: 'New Invoice uses the same design as New Load: one scrolling form with a section menu on the left (showing what each section still needs), a progress bar, and Ctrl+Enter to create. The sections are Customer & loads (search the customer, tick the delivered loads to bill), Bill to, Invoice details, Shipment, Charges (with quick-add detention, lumper, stop-off and discount) and Notes. Where New Load has its summary, a wider panel shows the invoice itself, page for page the PDF the customer receives, and it updates as you type; Open and Download give the PDF. On smaller screens the preview is the last section. Save draft, Create & email and Delete work as before.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
