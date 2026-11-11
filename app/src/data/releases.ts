@@ -382,6 +382,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.27',
+    date: '2026-11-11',
+    title: 'Easier to click, clearer colours',
+    changes: [
+      {
+        id: 'hig-pass-1', kind: 'Updated', section: 'Everywhere', title: 'Bigger click targets, one highlighted Deploy button, and status labels in their own colour (live for every company)',
+        details: 'Following Apple\u2019s Human Interface Guidelines: small text links, load numbers and Planner chips are easier to click without anything moving, and checkboxes in tables are larger; on touch screens buttons, tabs and menu items are at least 44 px. Developer \u203a Releases highlights only the next version to deploy. Status labels such as In transit and On duty use their own indigo instead of the accent colour, so the accent always means something you can click.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

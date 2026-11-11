@@ -32,6 +32,8 @@
   --ui-red: #b42318;
   --ui-red-soft: #fdecea;
   --ui-purple: #6d3fd1;
+  --ui-info: #4338ca;
+  --ui-info-soft: #e8e7fc;
   --ui-purple-soft: #efe8fd;
   --ui-teal: #0f766e;
   --ui-teal-soft: #dcf5f1;
@@ -72,6 +74,8 @@
   --ui-nav-pill: #1f1f1f;
   --ui-red: #ff8a80;
   --ui-red-soft: #2e1614;
+  --ui-info: #a5b4fc;
+  --ui-info-soft: #1b1b33;
   --ui-purple: #b79bff;
   --ui-purple-soft: #221b38;
   --ui-teal: #5fd4c4;
@@ -112,6 +116,8 @@
   --ui-nav-pill: #2b3648;
   --ui-red: #ff8a80;
   --ui-red-soft: #3a1c1a;
+  --ui-info: #a5b4fc;
+  --ui-info-soft: #232650;
   --ui-purple: #b79bff;
   --ui-purple-soft: #2a2145;
   --ui-teal: #5fd4c4;
@@ -359,7 +365,9 @@
 
 /* — status chips and in-card filters — */
 .ui-chip { display: inline-flex; align-items: center; padding: 3px 10px; font-size: 12px; font-weight: 600; border-radius: 999px; white-space: nowrap; }
-.ui-chip-blue { background: var(--ui-primary-soft); color: var(--ui-primary-hover); }
+/* In-progress status ("In transit", "On duty", roles): its own indigo, not the
+   accent, so the accent only ever marks what can be clicked (release 1.27). */
+.ui-chip-info { background: var(--ui-info-soft); color: var(--ui-info); }
 .ui-chip-gray { background: var(--ui-gray-soft); color: var(--ui-text-2); }
 .ui-chip-amber { background: var(--ui-amber-soft); color: var(--ui-amber); }
 .ui-chip-green { background: var(--ui-green-soft); color: var(--ui-green); }
@@ -963,3 +971,19 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
    window ends level with the sidebar. Shorter content keeps its own height. — */
 .ui-main { padding-bottom: 0; }
 :root[data-density="compact"] .ui-main { padding-bottom: 0; }
+
+/* — Click targets (release 1.27, Apple HIG: desktop controls at least 20 px,
+   28 px by default; 44 px on touch screens). Small text controls get a taller
+   clickable area without moving anything: padding grows the target, the
+   matching negative margin keeps the layout where it was. — */
+.ui-link { padding: 5px 2px; margin: -5px -2px; }
+a.ui-link { padding-block: 7px; margin-block: -7px; }
+:is(.ui-id-btn, .drv-name) { padding-block: 3px; margin-block: -3px; }
+.cal-chip { min-height: 28px; }
+:is(.ui-table td, .rel-pending-head) > input[type="checkbox"] { width: 20px; height: 20px; margin: 0; accent-color: var(--ui-primary); }
+@media (pointer: coarse) {
+  :is(.ui-btn, .ui-nav-item, .ui-tab, .ui-sort-btn, .ui-filter-opt, .set-nav-item, .ui-collapse, .ui-theme-btn) { min-height: 44px; }
+  :is(.ui-collapse, .ui-theme-btn) { min-width: 44px; }
+  :is(.ui-link, .ui-id-btn) { padding-block: 12px; margin-block: -12px; }
+  :is(.ui-table td, .rel-pending-head) > input[type="checkbox"], .ui-check input { width: 24px; height: 24px; }
+}

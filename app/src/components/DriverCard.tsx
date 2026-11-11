@@ -56,7 +56,7 @@ export function DriverCard({ driver, onEdit, onClose }: { driver: FleetDriver; o
               <h2 className="ui-h2" style={{ margin: 0 }}>{driver.name}</h2>
               <div className="drv-tags">
                 <Tag label={driver.archived ? 'Archived' : driver.status} tagClass={driver.archived ? 'tag-neutral' : driver.tagClass} />
-                <span className="ui-chip ui-chip-blue">{mode}</span>
+                <span className="ui-chip ui-chip-info">{mode}</span>
                 {text(driver, 'employeeId') && <span className="ui-stop-meta" style={{ marginTop: 0 }}>ID {text(driver, 'employeeId')}</span>}
               </div>
             </div>

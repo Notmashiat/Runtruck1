@@ -597,7 +597,7 @@ function Team() {
                 <strong>{m.name}{me(m) && <span className="set-you">You</span>}</strong>
                 <span className="ui-stop-meta">{[m.email, m.phone].filter(Boolean).join(' · ')}</span>
               </div>
-              <span className="ui-chip ui-chip-blue">{m.role}</span>
+              <span className="ui-chip ui-chip-info">{m.role}</span>
               {!m.active && <span className="ui-chip ui-chip-gray">Deactivated</span>}
               <button type="button" className="ui-link" onClick={() => { setEditing({ ...m }); setTried(false); }}>Edit</button>
               {!me(m) && (

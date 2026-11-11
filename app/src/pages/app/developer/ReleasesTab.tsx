@@ -326,7 +326,8 @@ export function ReleasesTab() {
                   </div>
                   <div style={{ flex: 1 }} />
                   {v.merge && <button type="button" className="ui-link" onClick={() => splitVersion(v)}>Split</button>}
-                  <button type="button" className="ui-btn ui-btn-primary" onClick={() => setDeploying(v)}>Deploy {v.id} to paid accounts</button>
+                  {/* Only the next version to deploy is the highlighted action. */}
+                  <button type="button" className={`ui-btn${i === 0 ? ' ui-btn-primary' : ''}`} onClick={() => setDeploying(v)}>Deploy {v.id} to paid accounts</button>
                 </div>
                 <Changes list={v.changes} />
               </div>
