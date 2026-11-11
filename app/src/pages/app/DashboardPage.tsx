@@ -12,6 +12,9 @@ import { isLive } from '../../lib/releases';
 import { usePersisted } from '../../lib/persist';
 
 const ROW = 10; // grid row unit (px); widget heights snap to it
+// The widgets count as filling the window when the tallest column ends this
+// close to the bottom (the grid's spacing below the last widget).
+const FILLED_WITHIN = 24;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 function greeting() {
@@ -151,10 +154,11 @@ export function DashboardPage() {
   const shown = layout.items.filter((i) => !i.hidden && can(WIDGET_NEEDS[i.id]));
   const visible = fit ? shown.slice(0, MAX_SHOWN) : shown;
 
-  // Release 1.26: the widget at the bottom of each column reaches down to the
-  // bottom of the window, level with the sidebar (not while customising,
-  // where the heights shown are the ones set). Measured from where the
-  // widgets are laid out: one with nothing under it gets the room below it.
+  // Release 1.26: when the widgets fill the window (the tallest column
+  // reaches the bottom), the widget at the bottom of each shorter column
+  // reaches down too, so they all end level with the sidebar. A dashboard
+  // with room to spare is left as it is, and so is one being customised
+  // (where the heights shown are the ones set).
   const [stretch, setStretch] = useState<Record<string, number>>({});
   const fillDown = fitting && !editing;
   const heights = visible.map((it) => `${it.id}:${it.h}:${it.span}`).join(',');
@@ -168,11 +172,13 @@ export function DashboardPage() {
         const bottom = main.getBoundingClientRect().top + main.clientHeight - parseFloat(getComputedStyle(main).paddingBottom);
         const hOf = new Map(heights.split(',').map((x) => { const [id, h] = x.split(':'); return [id, Number(h)] as const; }));
         const items = [...grid.querySelectorAll<HTMLElement>('[data-widget]')].map((el) => ({ id: el.dataset.widget ?? '', r: el.getBoundingClientRect() }));
-        for (const a of items) {
+        const ends = items.map((a) => a.r.top + (hOf.get(a.id) ?? 0) * shownScale.current);
+        const filled = ends.length > 0 && bottom - Math.max(...ends) <= FILLED_WITHIN;
+        items.forEach((a, i) => {
           const below = items.some((b) => b !== a && b.r.top >= a.r.bottom - 1 && b.r.left < a.r.right - 1 && b.r.right > a.r.left + 1);
-          const extra = Math.floor(bottom - (a.r.top + (hOf.get(a.id) ?? 0) * shownScale.current));
-          if (!below && extra > 0) next[a.id] = extra;
-        }
+          const extra = Math.floor(bottom - ends[i]);
+          if (filled && !below && extra > 0) next[a.id] = extra;
+        });
       }
       setStretch((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
     };

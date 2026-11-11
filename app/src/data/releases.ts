@@ -374,11 +374,11 @@ export const RELEASES: Release[] = [
   {
     id: '1.26',
     date: '2026-11-10',
-    title: 'Pages reach the bottom of the window',
+    title: 'Pages end level with the sidebar',
     changes: [
       {
-        id: 'pages-fill', kind: 'Updated', section: 'Everywhere', title: 'Every page ends level with the sidebar (live for every company)',
-        details: 'The gap under each page is gone and the last card grows into the room left, so every page reaches the bottom of the window like the sidebar: list pages, a load\u2019s page (both columns), Settings (its section menu stays in view while scrolling) and the Planner. On the Dashboard, the widget at the bottom of each column reaches down to the bottom (except while customising). Pages longer than the window scroll as before.',
+        id: 'pages-fill', kind: 'Updated', section: 'Everywhere', title: 'A page that fills the window ends level with the sidebar (live for every company)',
+        details: 'The gap under each page is gone, so a page whose content fills the window (or scrolls) ends level with the bottom of the sidebar. A page with less content keeps its own height. On the Dashboard, when the widgets fill the window, the widget at the bottom of each shorter column reaches down too, so they all end level (not while customising).',
       },
     ],
   },

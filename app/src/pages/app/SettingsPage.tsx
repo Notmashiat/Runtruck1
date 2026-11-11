@@ -957,21 +957,19 @@ export function SettingsPage() {
   return (
     <div className="set-page">
       <nav className="set-nav" aria-label="Settings sections">
-        <div className="set-nav-inner">
-          <div className="set-nav-title">Settings</div>
-          {allowed.map((s) => (
-            <button
-              key={s.key} type="button" className={`set-nav-item${s.key === current.key ? ' is-active' : ''}`}
-              aria-current={s.key === current.key ? 'page' : undefined}
-              onClick={() => {
-                const unsaved = document.querySelector('.set-savebar:not(.is-saved)');
-                if (s.key !== current.key && (!unsaved || window.confirm('Leave this section? Unsaved changes will be lost.'))) navigate(`/app/settings/${s.key}`);
-              }}
-            >
-              {s.title}
-            </button>
-          ))}
-        </div>
+        <div className="set-nav-title">Settings</div>
+        {allowed.map((s) => (
+          <button
+            key={s.key} type="button" className={`set-nav-item${s.key === current.key ? ' is-active' : ''}`}
+            aria-current={s.key === current.key ? 'page' : undefined}
+            onClick={() => {
+              const unsaved = document.querySelector('.set-savebar:not(.is-saved)');
+              if (s.key !== current.key && (!unsaved || window.confirm('Leave this section? Unsaved changes will be lost.'))) navigate(`/app/settings/${s.key}`);
+            }}
+          >
+            {s.title}
+          </button>
+        ))}
       </nav>
       <div className="set-body" key={current.key}>
         <header className="set-head">

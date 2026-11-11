@@ -624,9 +624,7 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 
 /* — Settings page — */
 .set-page { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px; align-items: start; }
-.set-nav { padding: 16px 10px; background: var(--ui-card); border-radius: 16px; }
-/* The menu card fills the page's height; the menu in it stays in view. */
-.set-nav-inner { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 2px; }
+.set-nav { position: sticky; top: 0; display: flex; flex-direction: column; gap: 2px; padding: 16px 10px; background: var(--ui-card); border-radius: 16px; }
 .set-nav-title { padding: 0 12px 10px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ui-muted); }
 .set-nav-item {
   padding: 9px 12px; text-align: left; font: inherit; font-size: 14px; font-weight: 600; color: var(--ui-text-2);
@@ -704,8 +702,7 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .set-counts span { font-size: 12px; color: var(--ui-muted); }
 @media (max-width: 900px) {
   .set-page { grid-template-columns: minmax(0, 1fr); }
-  .set-nav { overflow-x: auto; padding: 8px; }
-  .set-nav-inner { position: static; flex-direction: row; }
+  .set-nav { position: static; flex-direction: row; overflow-x: auto; padding: 8px; }
   .set-nav-title { display: none; }
   .set-nav-item { flex: none; white-space: nowrap; }
 }
@@ -962,13 +959,7 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
   .ui-topbar-right { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; margin-left: 0; padding-left: 12px; }
 }
 
-/* — Every page reaches the bottom of the window, level with the sidebar
-   (release 1.26): no gap under the page, and the last card (or row of cards)
-   grows into the room left. Longer pages scroll as before. — */
+/* — No gap under the page (release 1.26): a page whose content fills the
+   window ends level with the sidebar. Shorter content keeps its own height. — */
 .ui-main { padding-bottom: 0; }
 :root[data-density="compact"] .ui-main { padding-bottom: 0; }
-.ui-main > .ui-card:last-child,
-.ui-main > :is(.ui-grid-2, .ui-grid-3, .set-page):last-child { flex-grow: 1; }
-.ui-main > :is(.ui-grid-2, .ui-grid-3, .set-page):last-child { align-items: stretch; }
-.ui-main > :is(.ui-grid-2, .ui-grid-3):last-child > div:not(.ui-card) > .ui-card:last-child { flex-grow: 1; }
-.set-body > .set-group:last-child { flex-grow: 1; }
