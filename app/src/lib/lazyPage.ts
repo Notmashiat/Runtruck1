@@ -6,27 +6,44 @@
 import { lazy, type ComponentType } from 'react';
 import { isLoadFailure } from './errorLog';
 
-const RELOADED_KEY = 'runtruck-reloaded-at';
-const RELOAD_GAP_MS = 30_000;
+const RELOADS_KEY = 'runtruck-reloads';
+// Right after RunTruck is updated, a new file can take a little while to
+// reach every server, so one failed download is not the end: try the download
+// again in place, then reload up to three times in two minutes (waiting a bit
+// longer each time) before the error boundary explains and offers a reload.
+const RETRY_AFTER_MS = 1500;
+const RELOAD_WINDOW_MS = 120_000;
+const MAX_RELOADS = 3;
 
-function reloadOnce(error: unknown): Promise<never> {
-  let last = 0;
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+function reloadSoon(error: unknown): Promise<never> {
+  if (!isLoadFailure(error)) throw error;
+  let times: number[] = [];
   try {
-    last = Number(sessionStorage.getItem(RELOADED_KEY)) || 0;
+    const saved = JSON.parse(sessionStorage.getItem(RELOADS_KEY) ?? '[]') as unknown;
+    times = Array.isArray(saved) ? saved.filter((t): t is number => typeof t === 'number' && Date.now() - t < RELOAD_WINDOW_MS) : [];
+    // Reloaded enough times already and it still fails: stop, and show the error.
+    if (times.length >= MAX_RELOADS) throw error;
+    sessionStorage.setItem(RELOADS_KEY, JSON.stringify([...times, Date.now()]));
   } catch {
-    // Storage blocked: fall through to the error boundary.
+    // Storage blocked (or out of reloads): the error boundary takes over.
     throw error;
   }
-  // Already reloaded moments ago and it still fails: stop, and show the error.
-  if (!isLoadFailure(error) || Date.now() - last < RELOAD_GAP_MS) throw error;
-  try {
-    sessionStorage.setItem(RELOADED_KEY, String(Date.now()));
-  } catch {
-    throw error;
-  }
-  window.location.reload();
+  // The first reload is at once; later ones wait 2 s, then 4 s.
+  window.setTimeout(() => window.location.reload(), times.length * 2000);
   // Keep the "Loading…" state on screen until the reload takes over.
   return new Promise<never>(() => undefined);
+}
+
+// Download a screen; if that fails, once more after a moment, then reload.
+export function loadWithRetry<M>(load: () => Promise<M>): Promise<M> {
+  return load()
+    .catch((error: unknown) => {
+      if (!isLoadFailure(error)) throw error;
+      return wait(RETRY_AFTER_MS).then(load);
+    })
+    .catch(reloadSoon);
 }
 
 // The exports of a module that are components.
@@ -35,5 +52,5 @@ type PropsOf<C> = C extends ComponentType<infer P> ? P : never;
 
 // lazy() for a named export: lazyNamed(() => import('./pages/X'), 'X').
 export function lazyNamed<M, K extends ComponentKeys<M>>(load: () => Promise<M>, name: K) {
-  return lazy(() => load().catch(reloadOnce).then((m) => ({ default: m[name] as ComponentType<PropsOf<M[K]>> })));
+  return lazy(() => loadWithRetry(load).then((m) => ({ default: m[name] as ComponentType<PropsOf<M[K]>> })));
 }
