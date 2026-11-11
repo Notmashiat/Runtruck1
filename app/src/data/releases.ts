@@ -371,6 +371,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.26',
+    date: '2026-11-10',
+    title: 'Pages reach the bottom of the window',
+    changes: [
+      {
+        id: 'pages-fill', kind: 'Updated', section: 'Everywhere', title: 'Every page ends level with the sidebar (live for every company)',
+        details: 'The gap under each page is gone and the last card grows into the room left, so every page reaches the bottom of the window like the sidebar: list pages, a load\u2019s page (both columns), Settings (its section menu stays in view while scrolling) and the Planner. On the Dashboard, the widget at the bottom of each column reaches down to the bottom (except while customising). Pages longer than the window scroll as before.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

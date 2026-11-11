@@ -150,6 +150,38 @@ export function DashboardPage() {
 
   const shown = layout.items.filter((i) => !i.hidden && can(WIDGET_NEEDS[i.id]));
   const visible = fit ? shown.slice(0, MAX_SHOWN) : shown;
+
+  // Release 1.26: the widget at the bottom of each column reaches down to the
+  // bottom of the window, level with the sidebar (not while customising,
+  // where the heights shown are the ones set). Measured from where the
+  // widgets are laid out: one with nothing under it gets the room below it.
+  const [stretch, setStretch] = useState<Record<string, number>>({});
+  const fillDown = fitting && !editing;
+  const heights = visible.map((it) => `${it.id}:${it.h}:${it.span}`).join(',');
+  useEffect(() => {
+    const grid = gridRef.current;
+    const main = grid?.closest<HTMLElement>('.ui-main');
+    if (!grid || !main) return;
+    const compute = () => {
+      const next: Record<string, number> = {};
+      if (fillDown) {
+        const bottom = main.getBoundingClientRect().top + main.clientHeight - parseFloat(getComputedStyle(main).paddingBottom);
+        const hOf = new Map(heights.split(',').map((x) => { const [id, h] = x.split(':'); return [id, Number(h)] as const; }));
+        const items = [...grid.querySelectorAll<HTMLElement>('[data-widget]')].map((el) => ({ id: el.dataset.widget ?? '', r: el.getBoundingClientRect() }));
+        for (const a of items) {
+          const below = items.some((b) => b !== a && b.r.top >= a.r.bottom - 1 && b.r.left < a.r.right - 1 && b.r.right > a.r.left + 1);
+          const extra = Math.floor(bottom - (a.r.top + (hOf.get(a.id) ?? 0) * shownScale.current));
+          if (!below && extra > 0) next[a.id] = extra;
+        }
+      }
+      setStretch((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    };
+    // Runs once when it starts watching, then whenever the window or grid changes size.
+    const ro = new ResizeObserver(compute);
+    ro.observe(main);
+    ro.observe(grid);
+    return () => ro.disconnect();
+  }, [fillDown, heights, cols, drawn]);
   // A layout saved with more widgets than the dashboard holds keeps the first ones.
   const extra = fit ? shown.slice(MAX_SHOWN).map((i) => i.id).join() : '';
   useEffect(() => {
@@ -210,7 +242,7 @@ export function DashboardPage() {
             >
               <section
                 className={`dash-card${kpi ? ' is-kpi' : ''}${fitClass}`}
-                style={{ height }}
+                style={{ height: height + (stretch[it.id] ?? 0) }}
                 onClick={kpi && !editing ? () => navigate(kpi.to) : undefined}
                 role={kpi && !editing ? 'link' : undefined}
                 tabIndex={kpi && !editing ? 0 : undefined}
