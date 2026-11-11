@@ -18,7 +18,7 @@ import { usePersisted } from '../lib/persist';
 import { toast } from '../lib/toast';
 import { DispatchTextDialog } from './DispatchTextDialog';
 import { hl } from './highlight';
-import { Combo, Req, SecHead, Seg } from './nlParts';
+import { Combo, NlConfirm, Req, SecHead, Seg } from './nlParts';
 import { Fa } from './Fa';
 import { INITIAL, chargesTotal, draftFromLoad, emptyStop, nextId, toLoad, type Draft, type StopDraft } from './loadForm';
 import { COUNTED, chargeProblem, checksFor, fmtDay, isPickup, rulesFor, schedOf, type Rule, type SectionId } from './newLoadRules';
@@ -493,7 +493,13 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
     onSaved?.(id);
   };
 
-  const requestClose = () => setConfirm('discard');
+  // Cancel closes at once when nothing has been entered; otherwise it asks
+  // first, in a warning over the popup.
+  const dirty = JSON.stringify(d) !== JSON.stringify(initial) || events.length > 0 || truckQuery.trim() !== '' || ltlQuery.trim() !== '';
+  const requestClose = () => {
+    if (dirty) setConfirm('discard');
+    else closeNow();
+  };
   const keepEditing = () => {
     setConfirm(null);
     later(() => document.getElementById('nl-btn-cancel')?.focus());
@@ -509,9 +515,6 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
     closeNow();
     onDeleted?.();
   };
-  useEffect(() => {
-    if (confirm) document.getElementById('nl-btn-keep')?.focus();
-  }, [confirm]);
 
   // — summary pieces —
   const unset = (t: string) => <span className="is-unset">{t}</span>;
@@ -1448,38 +1451,33 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
 
       {/* Footer */}
       <footer className="nl-foot">
-        {!confirm ? (
-          <div className="nl-foot-row">
-            <div className="nl-foot-left">
-              <p role="status" aria-live="polite" className="nl-status">{statusLine}</p>
-              <span className="nl-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> {editing ? 'save' : 'create'} <span className="nl-bar">|</span> <kbd>Esc</kbd> cancel</span>
-            </div>
-            <div className="nl-foot-btns">
-              {editing && <button type="button" className="nl-btn-danger-line nl-fbtn" onClick={() => setConfirm('delete')}>Delete load</button>}
-              <button id="nl-btn-cancel" type="button" className="nl-btn-ghost nl-fbtn" onClick={requestClose}>Cancel</button>
-              <button type="button" className="nl-btn-main nl-fbtn" onClick={create}>
-                <span>{editing ? 'Save changes' : 'Create load'}</span><Fa icon={faArrowRight} />
-              </button>
-            </div>
+        <div className="nl-foot-row">
+          <div className="nl-foot-left">
+            <p role="status" aria-live="polite" className="nl-status">{statusLine}</p>
+            <span className="nl-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> {editing ? 'save' : 'create'} <span className="nl-bar">|</span> <kbd>Esc</kbd> cancel</span>
           </div>
-        ) : (
-          <div className="nl-foot-row" role="alertdialog" aria-labelledby="nl-confirm-title" aria-describedby="nl-confirm-desc">
-            <p className="nl-confirm-text">
-              <Fa icon={faTriangleExclamation} />
-              <span>
-                <strong id="nl-confirm-title">{confirm === 'delete' ? `Delete load ${loadNo}?` : editing ? 'Discard your changes?' : 'Discard this load?'}</strong>{' '}
-                <span id="nl-confirm-desc">
-                  {confirm === 'delete' ? 'It’s removed from the board, its load page and the planner. This can’t be undone.' : editing ? 'The changes you’ve made will be lost.' : 'The details you’ve entered will be lost.'}
-                </span>
-              </span>
-            </p>
-            <div className="nl-foot-btns">
-              <button id="nl-btn-keep" type="button" className="nl-btn-white nl-fbtn" onClick={keepEditing}>Keep editing</button>
-              <button type="button" className="nl-btn-red" onClick={confirm === 'delete' ? remove : discard}>{confirm === 'delete' ? 'Delete load' : 'Discard'}</button>
-            </div>
+          <div className="nl-foot-btns">
+            {editing && <button type="button" className="nl-btn-danger-line nl-fbtn" onClick={() => setConfirm('delete')}>Delete load</button>}
+            <button id="nl-btn-cancel" type="button" className="nl-btn-ghost nl-fbtn" onClick={requestClose}>Cancel</button>
+            <button type="button" className="nl-btn-main nl-fbtn" onClick={create}>
+              <span>{editing ? 'Save changes' : 'Create load'}</span><Fa icon={faArrowRight} />
+            </button>
           </div>
-        )}
+        </div>
       </footer>
+
+      {confirm && (
+        <NlConfirm
+          danger={confirm === 'delete'}
+          title={confirm === 'delete' ? `Delete load ${loadNo}?` : 'Discard unsaved changes?'}
+          body={confirm === 'delete'
+            ? 'It’s removed from the board, its load page and the planner. This can’t be undone.'
+            : editing ? `The changes you’ve made to load ${loadNo} won’t be saved.` : 'You’ve started filling in this load. If you cancel now, what you’ve entered won’t be saved.'}
+          confirmLabel={confirm === 'delete' ? 'Delete load' : 'Discard'}
+          onConfirm={confirm === 'delete' ? remove : discard}
+          onCancel={keepEditing}
+        />
+      )}
 
       {dispatching && (
         <DispatchTextDialog

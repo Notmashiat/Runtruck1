@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
+import { faTrashCan, faTriangleExclamation, type IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import { Fa } from './Fa';
 
 // Pieces of the Loadpopupv_2 design shared by the New Load and New Invoice
@@ -119,5 +119,38 @@ export function Combo<T>(p: ComboProps<T>) {
         </ul>
       )}
     </div>
+  );
+}
+
+// A warning that opens over the popup (discarding unsaved details, deleting):
+// Keep editing (also Esc) goes back to the form as it was.
+export function NlConfirm({ title, body, confirmLabel, danger = false, onConfirm, onCancel }: {
+  title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void; onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (el && !el.open) el.showModal();
+    document.getElementById('nl-cf-keep')?.focus();
+  }, []);
+  return (
+    <dialog
+      ref={ref} className="nl-cf" role="alertdialog" aria-labelledby="nl-cf-title" aria-describedby="nl-cf-desc"
+      onCancel={(e) => { e.preventDefault(); e.stopPropagation(); onCancel(); }}
+      onClose={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <div className="nl-cf-body">
+        <span className={`nl-cf-ico${danger ? ' is-danger' : ''}`}><Fa icon={danger ? faTrashCan : faTriangleExclamation} /></span>
+        <div>
+          <h2 id="nl-cf-title" className="nl-cf-title">{title}</h2>
+          <p id="nl-cf-desc" className="nl-cf-desc">{body}</p>
+        </div>
+      </div>
+      <div className="nl-cf-foot">
+        <button id="nl-cf-keep" type="button" className="nl-btn-white nl-fbtn" onClick={onCancel}>Keep editing</button>
+        <button type="button" className="nl-btn-red" onClick={onConfirm}>{confirmLabel}</button>
+      </div>
+    </dialog>
   );
 }

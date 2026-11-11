@@ -410,9 +410,6 @@ select.nl-inp { appearance: none; -webkit-appearance: none; padding-right: 36px;
 .nl-btn-red { height: 40px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--nl-red600); font-size: 14px; font-weight: 600; color: #fff; }
 .nl-btn-red:hover { background: var(--nl-red700); }
 .nl-btn-red:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--nl-red200); }
-.nl-confirm-text { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 20px; color: var(--nl-ink); }
-.nl-confirm-text .fa-svg { margin-top: 2px; color: var(--nl-sand500); }
-.nl-confirm-text strong { font-weight: 600; }
 
 /* Dispatch to driver */
 .nl-dp {
@@ -522,3 +519,20 @@ span.inv-line-amt:not(.is-num) { display: flex; height: 40px; align-items: cente
 .inv-total output { font-size: 18px; font-weight: 600; color: var(--nl-ink); font-variant-numeric: tabular-nums; }
 .inv-history { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--nl-mute); }
 .inv-history b { margin-right: 8px; font-weight: 600; color: var(--nl-ink); }
+
+/* — Discard / delete warning over a popup (nlParts.tsx NlConfirm) — */
+.nl-cf {
+  display: none; flex-direction: column; width: calc(100% - 32px); max-width: 440px;
+  margin: auto; padding: 0; overflow: hidden; background: #fff; border: 0; border-radius: 20px;
+  box-shadow: 0 30px 80px -20px rgba(30, 40, 70, 0.5);
+}
+.nl-cf[open] { display: flex; animation: nl-cf-in 160ms ease-out; }
+.nl-cf::backdrop { background: rgba(15, 23, 42, 0.35); }
+@keyframes nl-cf-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } }
+@media (prefers-reduced-motion: reduce) { .nl-cf[open] { animation: none; } }
+.nl-cf-body { display: flex; align-items: flex-start; gap: 14px; padding: 24px 24px 20px; }
+.nl-cf-ico { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: 12px; background: var(--nl-sand50); color: var(--nl-sand500); font-size: 16px; }
+.nl-cf-ico.is-danger { background: var(--nl-red50); color: var(--nl-red600); }
+.nl-cf-title { font-size: 17px; font-weight: 600; line-height: 1.3; color: var(--nl-ink); }
+.nl-cf-desc { margin-top: 4px; font-size: 14px; line-height: 1.5; color: var(--nl-mute); }
+.nl-cf-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 24px; border-top: 1px solid var(--nl-line); background: var(--nl-canvas); }

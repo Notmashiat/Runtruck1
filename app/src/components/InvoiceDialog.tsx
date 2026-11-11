@@ -21,7 +21,7 @@ import { Fa } from './Fa';
 import { Field, isEmail, launch, mailtoHref, useModal } from './FormBits';
 import { INV_COUNTED, invoiceRules, requiredCount, type InvSection } from './invoiceRules';
 import { hl } from './highlight';
-import { Combo, Req, SecHead } from './nlParts';
+import { Combo, NlConfirm, Req, SecHead } from './nlParts';
 import { PdfPages } from './PdfPages';
 
 // New Invoice / Edit invoice (release 1.23), in the Loadpopupv_2 design of
@@ -229,7 +229,6 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
   const requestClose = () => {
     if (!dirty) return closeNow();
     setConfirm('discard');
-    later(() => document.getElementById('nl-btn-keep')?.focus());
   };
   const keepEditing = () => {
     setConfirm(null);
@@ -667,42 +666,35 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
 
       {/* Footer */}
       <footer className="nl-foot">
-        {!confirm ? (
-          <div className="nl-foot-row">
-            <div className="nl-foot-left">
-              <p role="status" aria-live="polite" className="nl-status">{statusLine}</p>
-              <span className="nl-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> {issuedAlready ? 'save' : 'create'} <span className="nl-bar">|</span> <kbd>Esc</kbd> cancel</span>
-            </div>
-            <div className="nl-foot-btns">
-              {!isNew && <button type="button" className="nl-btn-danger-line nl-fbtn" onClick={() => { setConfirm('delete'); later(() => document.getElementById('nl-btn-keep')?.focus()); }}>Delete</button>}
-              <button id="nl-btn-cancel" type="button" className="nl-btn-ghost nl-fbtn" onClick={requestClose}>Cancel</button>
-              {!issuedAlready && <button type="button" className="nl-btn-white nl-fbtn" onClick={saveDraft}>Save draft</button>}
-              <button type="button" className="nl-btn-white nl-fbtn" onClick={() => create(true)}>{issuedAlready ? 'Save & email' : 'Create & email'}</button>
-              <button type="button" className="nl-btn-main nl-fbtn" onClick={() => create(false)}>
-                <span>{issuedAlready ? 'Save changes' : 'Create invoice'}</span><Fa icon={faArrowRight} />
-              </button>
-            </div>
+        <div className="nl-foot-row">
+          <div className="nl-foot-left">
+            <p role="status" aria-live="polite" className="nl-status">{statusLine}</p>
+            <span className="nl-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> {issuedAlready ? 'save' : 'create'} <span className="nl-bar">|</span> <kbd>Esc</kbd> cancel</span>
           </div>
-        ) : (
-          <div className="nl-foot-row" role="alertdialog" aria-labelledby="nl-confirm-title" aria-describedby="nl-confirm-desc">
-            <p className="nl-confirm-text">
-              <Fa icon={faTriangleExclamation} />
-              <span>
-                <strong id="nl-confirm-title">{confirm === 'delete' ? `Delete invoice ${d.id}?` : isNew ? 'Discard this invoice?' : 'Discard your changes?'}</strong>{' '}
-                <span id="nl-confirm-desc">
-                  {confirm === 'delete'
-                    ? `It's removed for good${d.loads.length ? ` and ${d.loads.join(', ')} go${d.loads.length === 1 ? 'es' : ''} back to Uninvoiced` : ''}. It also leaves any batch it was in.`
-                    : isNew ? 'The details you’ve entered will be lost.' : 'The changes you’ve made will be lost.'}
-                </span>
-              </span>
-            </p>
-            <div className="nl-foot-btns">
-              <button id="nl-btn-keep" type="button" className="nl-btn-white nl-fbtn" onClick={keepEditing}>Keep editing</button>
-              <button type="button" className="nl-btn-red" onClick={confirm === 'delete' ? remove : closeNow}>{confirm === 'delete' ? 'Delete invoice' : 'Discard'}</button>
-            </div>
+          <div className="nl-foot-btns">
+            {!isNew && <button type="button" className="nl-btn-danger-line nl-fbtn" onClick={() => setConfirm('delete')}>Delete</button>}
+            <button id="nl-btn-cancel" type="button" className="nl-btn-ghost nl-fbtn" onClick={requestClose}>Cancel</button>
+            {!issuedAlready && <button type="button" className="nl-btn-white nl-fbtn" onClick={saveDraft}>Save draft</button>}
+            <button type="button" className="nl-btn-white nl-fbtn" onClick={() => create(true)}>{issuedAlready ? 'Save & email' : 'Create & email'}</button>
+            <button type="button" className="nl-btn-main nl-fbtn" onClick={() => create(false)}>
+              <span>{issuedAlready ? 'Save changes' : 'Create invoice'}</span><Fa icon={faArrowRight} />
+            </button>
           </div>
-        )}
+        </div>
       </footer>
+
+      {confirm && (
+        <NlConfirm
+          danger={confirm === 'delete'}
+          title={confirm === 'delete' ? `Delete invoice ${d.id}?` : 'Discard unsaved changes?'}
+          body={confirm === 'delete'
+            ? `It's removed for good${d.loads.length ? ` and ${d.loads.join(', ')} go${d.loads.length === 1 ? 'es' : ''} back to Uninvoiced` : ''}. It also leaves any batch it was in.`
+            : isNew ? 'You’ve started filling in this invoice. If you cancel now, what you’ve entered won’t be saved.' : `The changes you’ve made to ${d.id} won’t be saved.`}
+          confirmLabel={confirm === 'delete' ? 'Delete invoice' : 'Discard'}
+          onConfirm={confirm === 'delete' ? remove : closeNow}
+          onCancel={keepEditing}
+        />
+      )}
 
       {/* Outside the popup's styles: the email form keeps the app's own look. */}
       {emailing && createPortal(<EmailInvoiceDialog invoice={emailing} onClose={() => { setEmailing(null); closeNow(); }} />, document.body)}
