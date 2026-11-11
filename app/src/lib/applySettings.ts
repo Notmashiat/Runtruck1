@@ -3,7 +3,7 @@ import { DISPATCHERS, TERMINALS } from '../data/fleet';
 import { BILLING, COMPANY, FACTORING } from '../data/invoicing';
 import { CARRIERS, USER } from '../data/mock';
 import { getSettings, numSetting, subscribeSettings } from './settingsStore';
-import { applyTheme } from './theme';
+import { applyDarkStyle, applyTheme } from './theme';
 
 const replaceAll = (list: string[], next: string[]) => list.splice(0, list.length, ...next);
 
@@ -41,6 +41,7 @@ function apply(s: Settings) {
   const root = document.documentElement;
   const dark = a.theme === 'Dark' || (a.theme === 'System' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
   applyTheme(dark ? 'dark' : 'light');
+  applyDarkStyle(a.darkStyle === 'Classic' ? 'classic' : 'midnight');
   if (a.accent === 'Blue') delete root.dataset.accent;
   else root.dataset.accent = a.accent.toLowerCase();
   // Release 1.22 put the light grey back behind the cards (1.20 had made it white).

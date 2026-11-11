@@ -41,8 +41,8 @@
 }
 
 :root[data-theme="dark"] {
-  /* Release 1.24: near-black, neutral greys (no blue tint), cards edged with
-     a thin line, brighter text. */
+  /* Midnight (release 1.24, the default dark mode): near-black, neutral greys
+     (no blue tint), cards edged with a thin line, brighter text. */
   color-scheme: dark;
   --ui-bg: #050505;
   --ui-card: #111111;
@@ -80,8 +80,48 @@
   --ui-overlay: rgba(0, 0, 0, 0.7);
   --ui-island-shadow: 0 0 0 1px #1f1f1f, 0 8px 24px rgba(0, 0, 0, 0.5);
 }
-/* On the near-black page every card has a thin edge, as in the reference. */
-:root[data-theme="dark"] :is(.ui-card, .ui-kpi, .ui-tabs, .dash-card, .dash-empty-all, .set-nav, .set-group) {
+/* Classic (Settings › Appearance › Dark mode style, release 1.25): the blue-grey
+   dark mode from before release 1.24, unchanged. */
+:root[data-theme="dark"][data-dark="classic"] {
+  color-scheme: dark;
+  --ui-bg: #0f141c;
+  --ui-card: #171e2a;
+  --ui-border: #273142;
+  --ui-row: #222c3a;
+  --ui-thead: #1d2634;
+  --ui-expand: #1b2330;
+  --ui-hover: #1f2836;
+  --ui-tab-hover: #1c2740;
+  --ui-row-hover: #1c2431;
+  --ui-filter-bg: #111823;
+  --ui-track: #273142;
+  --ui-dash: #34405a;
+  --ui-text: #e6e9ef;
+  --ui-text-2: #b8c0cc;
+  --ui-muted: #8b95a6;
+  --ui-primary: #5b8bff;
+  --ui-primary-hover: #7aa2ff;
+  --ui-primary-soft: #1f2f52;
+  --ui-on-primary: #0f141c;
+  --ui-amber: #f2b45c;
+  --ui-amber-soft: #3a2b12;
+  --ui-orange: #f5913e;
+  --ui-green: #5ccb86;
+  --ui-green-soft: #12301d;
+  --ui-gray-soft: #273142;
+  --ui-nav-pill: #2b3648;
+  --ui-red: #ff8a80;
+  --ui-red-soft: #3a1c1a;
+  --ui-purple: #b79bff;
+  --ui-purple-soft: #2a2145;
+  --ui-teal: #5fd4c4;
+  --ui-teal-soft: #12302d;
+  --ui-shadow: rgba(0, 0, 0, 0.5);
+  --ui-overlay: rgba(0, 0, 0, 0.6);
+  --ui-island-shadow: 0 0 0 1px #222b3a, 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+/* On Midnight's near-black page every card has a thin edge. */
+:root[data-theme="dark"]:not([data-dark="classic"]) :is(.ui-card, .ui-kpi, .ui-tabs, .dash-card, .dash-empty-all, .set-nav, .set-group) {
   outline: 1px solid var(--ui-border); outline-offset: -1px;
 }
 
@@ -575,6 +615,7 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 :root[data-theme="dark"][data-accent="purple"] { --ui-primary: #9b86ff; --ui-primary-hover: #b6a6ff; --ui-primary-soft: #2a2352; }
 :root[data-theme="dark"][data-accent="orange"] { --ui-primary: #ff9a62; --ui-primary-hover: #ffb58a; --ui-primary-soft: #3d2417; }
 :root[data-theme="dark"][data-accent="slate"] { --ui-primary: #a1a1aa; --ui-primary-hover: #c4c4ca; --ui-primary-soft: #26262a; }
+:root[data-theme="dark"][data-dark="classic"][data-accent="slate"] { --ui-primary: #94a3b8; --ui-primary-hover: #b4c0cf; --ui-primary-soft: #263041; }
 .ui-shell { zoom: var(--ui-zoom, 1); height: calc(100vh / var(--ui-zoom, 1)); }
 :root[data-density="compact"] .ui-table td { padding-top: 8px; padding-bottom: 8px; }
 :root[data-density="compact"] .ui-table th, :root[data-density="compact"] .ui-sort-btn { padding-top: 8px; padding-bottom: 8px; }
@@ -639,6 +680,22 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .set-swatch.is-purple { background: #6b4de6; }
 .set-swatch.is-orange { background: #d9622b; }
 .set-swatch.is-slate { background: #475569; }
+/* Dark mode style: each choice with a sample of its page, card and edge. */
+.set-darks { display: flex; gap: 10px; flex-wrap: wrap; }
+.set-dark {
+  display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; font: inherit; font-size: 13px; font-weight: 600; color: var(--ui-text-2);
+  background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 12px; cursor: pointer;
+}
+.set-dark:hover { border-color: var(--ui-dash); color: var(--ui-text); }
+.set-dark.is-on { color: var(--ui-primary-hover); border-color: var(--ui-primary); box-shadow: 0 0 0 1px var(--ui-primary); }
+.set-dark-sample { display: flex; align-items: flex-end; gap: 3px; width: 46px; height: 32px; padding: 5px; border-radius: 8px; }
+.set-dark-sample i { flex: 1; height: 100%; border-radius: 3px; }
+.set-dark-sample i:nth-child(2) { height: 70%; }
+.set-dark-sample i:nth-child(3) { height: 45%; background: #5b8bff !important; }
+.set-dark.is-midnight .set-dark-sample { background: #050505; box-shadow: inset 0 0 0 1px #242424; }
+.set-dark.is-midnight .set-dark-sample i { background: #111111; box-shadow: inset 0 0 0 1px #2a2a2a; }
+.set-dark.is-classic .set-dark-sample { background: #0f141c; box-shadow: inset 0 0 0 1px #273142; }
+.set-dark.is-classic .set-dark-sample i { background: #1d2634; }
 .set-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
 .set-counts div { display: flex; flex-direction: column; padding: 12px 14px; background: var(--ui-expand); border-radius: 12px; }
 .set-counts strong { font-size: 22px; font-variant-numeric: tabular-nums; }

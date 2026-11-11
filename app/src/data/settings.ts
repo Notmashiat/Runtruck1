@@ -40,6 +40,10 @@ export const ALERTS: { key: AlertKey; label: string; about: string }[] = [
 ];
 
 export type ThemeChoice = 'Light' | 'Dark' | 'System';
+// Which dark mode Dark (and the top bar's moon) uses: Midnight is the
+// near-black one (release 1.24), Classic the blue-grey one before it.
+export type DarkStyle = 'Midnight' | 'Classic';
+export const DARK_STYLES: DarkStyle[] = ['Midnight', 'Classic'];
 export type Accent = 'Blue' | 'Teal' | 'Green' | 'Purple' | 'Orange' | 'Slate';
 export type TextSize = 'Small' | 'Default' | 'Large';
 export type Density = 'Comfortable' | 'Compact';
@@ -63,7 +67,7 @@ export interface Settings {
   };
   alerts: Record<AlertKey, boolean>;
   team: TeamMember[];
-  appearance: { theme: ThemeChoice; accent: Accent; textSize: TextSize; density: Density; startPage: StartPage };
+  appearance: { theme: ThemeChoice; darkStyle: DarkStyle; accent: Accent; textSize: TextSize; density: Density; startPage: StartPage };
   // Release 1.21: the company's own text-message provider (Twilio), used to
   // text loads to drivers. Empty until the company connects it.
   integrations: { twilioSid: string; twilioToken: string; twilioFrom: string };
@@ -140,7 +144,7 @@ export const DEFAULT_SETTINGS: Settings = {
     { id: 'U-4', name: 'Grace Whitman', email: 'grace.whitman@sunridgefreight.com', phone: '(209) 555-0107', role: 'Accounting', active: true },
     { id: 'U-5', name: 'Daniel Soto', email: 'daniel.soto@sunridgefreight.com', phone: '(209) 555-0108', role: 'Safety & compliance', active: true },
   ],
-  appearance: { theme: 'Light', accent: 'Blue', textSize: 'Default', density: 'Comfortable', startPage: 'dashboard' },
+  appearance: { theme: 'Light', darkStyle: 'Midnight', accent: 'Blue', textSize: 'Default', density: 'Comfortable', startPage: 'dashboard' },
   integrations: { twilioSid: '', twilioToken: '', twilioFrom: '' },
 };
 

@@ -3,6 +3,8 @@
 // so the site can forbid inline scripts in its Content-Security-Policy.
 try {
   if (localStorage.getItem('runtruck-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+  // Classic dark mode (Settings › Appearance › Dark mode style).
+  if (localStorage.getItem('runtruck-dark-style') === 'classic') document.documentElement.dataset.dark = 'classic';
 } catch {
   // Storage is blocked: the light theme is used.
 }

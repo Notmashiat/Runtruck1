@@ -7,7 +7,7 @@ import { TERMS, fmtDate, invoiceTotal, nextInvoiceId, senderVars, usd } from '..
 import { USER } from '../../data/mock';
 import {
   ALERTS, DEFAULT_SETTINGS, ROLE_ABOUT, START_PAGES, TEAM_ROLES, TIME_ZONES, structuredCopy,
-  type Accent, type Density, type Settings, type TeamMember, type TeamRole, type TextSize, type ThemeChoice,
+  DARK_STYLES, type Accent, type Density, type Settings, type TeamMember, type TeamRole, type TextSize, type ThemeChoice,
 } from '../../data/settings';
 import { invoiceDoc } from '../../lib/invoicePdf';
 import { openPdf } from '../../lib/pdf';
@@ -792,6 +792,20 @@ function Appearance() {
         <div className="dash-opt">
           <div><strong>Theme</strong><span>System follows your device’s light or dark setting.</span></div>
           <Segmented options={['Light', 'Dark', 'System'] as ThemeChoice[]} value={a.theme} onChange={(v) => set('theme', v)} label="Theme" />
+        </div>
+        <div className="dash-opt">
+          <div><strong>Dark mode style</strong><span>Used whenever the app is dark, including the moon in the top bar. Midnight is near-black; Classic is the earlier blue-grey.</span></div>
+          <div className="set-darks" role="radiogroup" aria-label="Dark mode style">
+            {DARK_STYLES.map((style) => (
+              <button
+                key={style} type="button" role="radio" aria-checked={a.darkStyle === style}
+                className={`set-dark is-${style.toLowerCase()}${a.darkStyle === style ? ' is-on' : ''}`} onClick={() => set('darkStyle', style)}
+              >
+                <span className="set-dark-sample" aria-hidden="true"><i /><i /><i /></span>
+                <span>{style}</span>
+              </button>
+            ))}
+          </div>
         </div>
         <div className="dash-opt">
           <div><strong>Accent colour</strong><span>Buttons, links, highlights and charts.</span></div>

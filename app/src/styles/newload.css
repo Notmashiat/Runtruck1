@@ -36,6 +36,12 @@
   --nl-surface: #111111; --nl-field: #0b0b0b; --nl-soft: #0d0d0d; --nl-hover: rgba(255, 255, 255, 0.05); --nl-glass: rgba(17, 17, 17, 0.95);
   --nl-drop-bg: rgba(110, 127, 219, 0.08); --nl-blush-bg: #2e1719; --nl-mark: #5a4a12; --nl-a-hover: #8494ea; --nl-red-hover: #c53030;
 }
+:root[data-theme="dark"][data-dark="classic"] :is(.nl, .nl-dp, .nl-toast) {
+  --nl-ink: #e6e9ef; --nl-mute: #9aa3b4; --nl-line: #2b3546; --nl-canvas: #111823;
+  --nl-s300: #3d4a5e; --nl-s400: #6b7689; --nl-s500: #8b95a6;
+  --nl-surface: #171e2a; --nl-field: #121925; --nl-soft: #131a25; --nl-glass: rgba(23, 30, 42, 0.95); --nl-blush-bg: #3a2024;
+}
+:root[data-theme="dark"][data-dark="classic"] :is(.nl, .nl-dp, .nl-cf) { box-shadow: 0 0 0 1px #2b3546, 0 30px 80px -20px rgba(0, 0, 0, 0.7); }
 :root[data-theme="dark"] .nl::backdrop { background: rgba(0, 0, 0, 0.55); }
 :root[data-theme="dark"] :is(.nl, .nl-dp, .nl-cf) { box-shadow: 0 0 0 1px #262626, 0 30px 80px -20px rgba(0, 0, 0, 0.7); }
 /* The app's headings are drawn a little tighter; the design's are not. */

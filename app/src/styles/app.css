@@ -2,6 +2,23 @@
    .dc.html prototypes layered on top of the Industry design system's
    styles.css. The app's own look lives in shell.css. */
 
+/* Classic dark mode (Settings › Appearance › Dark mode style). */
+:root[data-theme="dark"][data-dark="classic"] {
+  --color-bg: #0f141c;
+  --color-surface: #171e2a;
+  --color-text: #e6e9ef;
+  --color-divider: color-mix(in srgb, #e6e9ef 16%, transparent);
+  --color-neutral-100: #1a2130;
+  --color-neutral-200: #232c3b;
+  --color-neutral-300: #2f3a4b;
+  --color-neutral-400: #4a5568;
+  --color-neutral-500: #6b7687;
+  --color-neutral-600: #8b96a6;
+  --color-neutral-700: #aab4c2;
+  --color-neutral-800: #cbd3dd;
+  --color-neutral-900: #e6e9ef;
+}
+
 /* Dark mode for the marketing site: the Industry tokens re-tuned for a dark
    ground. The tonal ramps are inverted (100 is now darkest), so every
    component keeps its contrast without touching industry.css. The app's own

@@ -360,6 +360,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.25',
+    date: '2026-11-10',
+    title: 'Choose your dark mode',
+    changes: [
+      {
+        id: 'dark-style', kind: 'New', section: 'Settings', title: 'Settings › Appearance › Dark mode style: Midnight or Classic (live for every company)',
+        details: 'Each account picks which dark mode it uses: Midnight (near-black, from release 1.24, the default) or Classic (the blue-grey dark mode from before). The choice is used whenever the app is dark, including when switching with the sun and moon in the top bar, and by the popups and the website. Light mode is unchanged.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
