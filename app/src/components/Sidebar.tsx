@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { NAV, USER, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
 import { can, canLogOut, isSuperAdmin, logOutAndLeave, me } from '../lib/auth';
+import { openAt } from '../lib/lastPlace';
 import { usePersisted } from '../lib/persist';
 import { pendingVersions, useReleaseState } from '../lib/releases';
 import { NavIcon } from './NavIcons';
@@ -61,7 +62,7 @@ export function Sidebar() {
             ) : (
               <Link
                 key={n.key}
-                to={`/app/${n.key}`}
+                to={openAt(n.key, can)}
                 onClick={navigated}
                 className={`ui-nav-item${n.key === activeKey ? ' is-active' : ''}`}
                 aria-current={n.key === activeKey ? 'page' : undefined}

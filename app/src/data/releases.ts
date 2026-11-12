@@ -527,6 +527,21 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.38',
+    date: '2026-11-12',
+    title: 'Pages reopen where you left them; several windows at once',
+    changes: [
+      {
+        id: 'last-place', kind: 'New', section: 'Everywhere', title: 'Pages reopen where you left them (live for every company)',
+        details: 'Going to another page and back now returns to the tab or stage you were on — for example Loads › Delivered, Fleet › Trucks or Accounting › Past due — instead of the first one. It lasts for the day: the next day every page opens on its usual first tab again. It is kept for each person on their own device, and each open window keeps its own (Loads on Delivered in one window, on Booked in another).',
+      },
+      {
+        id: 'multi-window', kind: 'Updated', section: 'Everywhere', title: 'Several windows at once (live for every company)',
+        details: 'RunTruck can be open in several windows or tabs of the same browser — for example Loads in one and Fleet in the other. A change saved in one shows in the others straight away. Signing in without "Keep me signed in" now covers every window opened while one is still open, and logging out in one window logs the others out too; once every window is closed, that sign-in ends as before.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

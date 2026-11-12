@@ -99,6 +99,92 @@ export const LOGIN_REQUIRED = false;
 // Ten years: the owner's automatic session never runs out in practice.
 const OWNER_SESSION_MS = 10 * 365 * 24 * 3_600_000;
 
+// — one sign-in for every window (release 1.38) —
+//
+// A session kept for "this visit only" lives in one tab's sessionStorage,
+// which a new window does not get. While a window is signed in that way it
+// shares the session here and refreshes the time every few seconds
+// (shareSession, from AppLayout); a window opened meanwhile takes it. Once
+// every window is closed the time goes stale and the session ends, as
+// before. Logging out marks the session ended, and the other windows log
+// out too.
+const SHARED_KEY = 'runtruck-session-shared';
+// Background windows may only run timers once a minute: allow for that.
+export const SHARED_FRESH_MS = 150_000;
+
+interface Shared { session?: { started?: unknown; expires?: unknown }; beat?: unknown; ended?: unknown }
+
+function readShared(): Shared | null {
+  try {
+    return JSON.parse(localStorage.getItem(SHARED_KEY) ?? 'null') as Shared | null;
+  } catch {
+    return null;
+  }
+}
+
+// A session another open window is using, if any (null when none is fresh).
+export function openSessionElsewhere(shared: Shared | null, now: number): string | null {
+  const s = shared?.session;
+  if (!s || typeof shared?.beat !== 'number' || now - shared.beat > SHARED_FRESH_MS) return null;
+  if (Date.parse(String(s.expires)) <= now) return null;
+  return JSON.stringify(s);
+}
+
+function adoptOpenSession() {
+  if (storedSession()) return;
+  const session = openSessionElsewhere(readShared(), Date.now());
+  if (!session) return;
+  try {
+    sessionStorage.setItem(SESSION_KEY, session);
+  } catch {
+    // Storage blocked: this window opens as if alone.
+  }
+}
+
+// This window's visit-only session, as stored (null when it has none).
+function visitSession(): { started?: string } | null {
+  try {
+    return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null') as { started?: string } | null;
+  } catch {
+    return null;
+  }
+}
+
+export function shareSession() {
+  const s = visitSession();
+  if (!s) return;
+  const shared = readShared();
+  // Logged out in another window: do not bring it back.
+  if (shared?.ended === s.started) return;
+  try {
+    localStorage.setItem(SHARED_KEY, JSON.stringify({ session: s, beat: Date.now() }));
+  } catch {
+    // Storage blocked or full: other windows sign in on their own.
+  }
+}
+
+export function endSharedSession() {
+  const s = visitSession();
+  try {
+    if (s?.started) localStorage.setItem(SHARED_KEY, JSON.stringify({ ended: s.started, at: Date.now() }));
+    else if (readShared()?.session) localStorage.removeItem(SHARED_KEY);
+  } catch {
+    // Nothing to mark.
+  }
+}
+
+// Whether another window logged out of the session this window uses.
+export function loggedOutElsewhere(raw: string | null): boolean {
+  if (!raw) return false;
+  try {
+    const shared = JSON.parse(raw) as Shared;
+    return typeof shared.ended === 'string' && shared.ended === visitSession()?.started;
+  } catch {
+    return false;
+  }
+}
+export const SHARED_SESSION_KEY = SHARED_KEY;
+
 function openOwnerSessionIfNoLogin() {
   if (LOGIN_REQUIRED || storedSession()) return;
   const now = Date.now();
@@ -111,6 +197,7 @@ function openOwnerSessionIfNoLogin() {
     // Storage blocked: the page still opens as the owner (the defaults below).
   }
 }
+adoptOpenSession();
 openOwnerSessionIfNoLogin();
 
 const signedIn = storedSession();

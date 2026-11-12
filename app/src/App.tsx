@@ -7,6 +7,7 @@ import { LandingPage } from './pages/marketing/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { LOGIN_REQUIRED } from './lib/account';
 import { can } from './lib/auth';
+import { openAt } from './lib/lastPlace';
 import { lazyNamed as page } from './lib/lazyPage';
 import { getSettings } from './lib/settingsStore';
 
@@ -55,7 +56,10 @@ function Allow({ perm, children }: { perm: string; children: ReactNode }) {
 }
 
 // A tabbed section opens on the first tab the account may use.
+// Release 1.38: a section left on another tab earlier today reopens there.
 function FirstTab({ section }: { section: ViewKey }) {
+  const left = openAt(section, can);
+  if (left.split('?')[0].split('/')[3]) return <Navigate to={left} replace />;
   const first = SECTION_TABS[section]?.find((t) => can(`${section}/${t.key}`));
   return <Navigate to={first ? first.key : '/app/dashboard'} replace />;
 }

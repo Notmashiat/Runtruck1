@@ -1,7 +1,7 @@
 import { ALL_PERMS, permits, type AccountType } from '../data/accounts';
 import { DEFAULT_SETTINGS } from '../data/settings';
 import {
-  COMPANY_ID, LOGIN_REQUIRED, MEMBER_ID, OWNER_COMPANY_ID, OWNER_MEMBER_ID, readRegistry, registryKey, sessionStores, storedSession,
+  COMPANY_ID, LOGIN_REQUIRED, MEMBER_ID, OWNER_COMPANY_ID, OWNER_MEMBER_ID, endSharedSession, readRegistry, registryKey, sessionStores, storedSession,
 } from './account';
 import { accountByEmail, accountById, reloadAccounts, saveAccount } from './accountStore';
 import { companyById, reloadCompanies } from './companyStore';
@@ -270,6 +270,8 @@ export function sessionChanged(): boolean {
 }
 
 export function logOut() {
+  // Other windows using this visit-only session log out too.
+  endSharedSession();
   for (const store of sessionStores()) {
     try {
       store.removeItem(SESSION_KEY);

@@ -8,13 +8,17 @@ import { StorageBanner, TrialBanner } from './StatusBanners';
 import { AppShellProvider } from '../context/AppShellContext';
 import { Suspense, useEffect } from 'react';
 import { TODAY } from '../data/planner';
+import { SHARED_SESSION_KEY, loggedOutElsewhere, shareSession } from '../lib/account';
 import { currentSession, sessionChanged } from '../lib/auth';
 import { todayIso } from '../lib/clock';
+import { useRememberPlace } from '../lib/lastPlace';
 import { useSettings } from '../lib/settingsStore';
 
 export function AppLayout() {
   useSettings();
   const location = useLocation();
+  // Each section reopens where it was left today (release 1.38).
+  useRememberPlace();
   // After midnight, reload once nothing is open so every "today" in the app
   // (dashboard, planner, due dates, demo records) moves to the new day.
   useEffect(() => {
@@ -30,9 +34,29 @@ export function AppLayout() {
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if ((e.key === 'runtruck-session' || e.key === null) && (sessionChanged() || !currentSession())) window.location.reload();
+      // Logged out in another window of this visit (release 1.38): this one too.
+      if (e.key === SHARED_SESSION_KEY && loggedOutElsewhere(e.newValue)) {
+        try {
+          sessionStorage.removeItem('runtruck-session');
+        } catch {
+          // Nothing to remove.
+        }
+        window.location.reload();
+      }
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
+  }, []);
+  // Lets a window opened next to this one use the same sign-in (release 1.38).
+  useEffect(() => {
+    shareSession();
+    const t = window.setInterval(shareSession, 5_000);
+    const onShow = () => { if (document.visibilityState === 'visible') shareSession(); };
+    document.addEventListener('visibilitychange', onShow);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', onShow);
+    };
   }, []);
 
   if (sessionChanged()) {
