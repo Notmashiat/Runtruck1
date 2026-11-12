@@ -87,7 +87,10 @@ export function DashboardPage() {
     const main = grid?.closest<HTMLElement>('.ui-main');
     if (!grid || !main || !fitting) return;
     const measure = () => {
-      const top = grid.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop;
+      // On-screen positions are scaled by the text size (Settings › Appearance);
+      // sizes such as clientHeight are not. Measure in the page's own pixels.
+      const ratio = main.getBoundingClientRect().height / main.offsetHeight || 1;
+      const top = (grid.getBoundingClientRect().top - main.getBoundingClientRect().top) / ratio + main.scrollTop;
       const room = main.clientHeight - top - spaceBelow(grid, main) - 1;
       const full = grid.offsetHeight / shownScale.current;
       setScale(full > 0 ? Math.min(1, Math.floor((room / full) * 1000) / 1000) : 1);
@@ -182,15 +185,20 @@ export function DashboardPage() {
       const next: Record<string, number> = {};
       let windowFull = false;
       if (fillDown) {
-        const bottom = main.getBoundingClientRect().top + main.clientHeight - spaceBelow(grid, main);
+        // Positions on screen are scaled by the text size; heights are not.
+        const ratio = main.getBoundingClientRect().height / main.offsetHeight || 1;
+        const bottom = main.getBoundingClientRect().top + (main.clientHeight - spaceBelow(grid, main)) * ratio;
         const hOf = new Map(heights.split(',').map((x) => { const [id, h] = x.split(':'); return [id, Number(h)] as const; }));
         const items = [...grid.querySelectorAll<HTMLElement>('[data-widget]')].map((el) => ({ id: el.dataset.widget ?? '', r: el.getBoundingClientRect() }));
-        const ends = items.map((a) => a.r.top + (hOf.get(a.id) ?? 0) * shownScale.current);
-        const filled = ends.length > 0 && bottom - Math.max(...ends) <= FILLED_WITHIN;
+        // Where each widget ends at its set height. Not the box on screen: that
+        // already includes any stretch, and measuring it would hide the
+        // widget underneath and stretch it too (the overlap in release 1.28).
+        const ends = items.map((a) => a.r.top + (hOf.get(a.id) ?? 0) * shownScale.current * ratio);
+        const filled = ends.length > 0 && (bottom - Math.max(...ends)) / ratio <= FILLED_WITHIN;
         windowFull = filled;
         items.forEach((a, i) => {
-          const below = items.some((b) => b !== a && b.r.top >= a.r.bottom - 1 && b.r.left < a.r.right - 1 && b.r.right > a.r.left + 1);
-          const extra = Math.floor(bottom - ends[i]);
+          const below = items.some((b) => b !== a && b.r.top >= ends[i] - 1 && b.r.left < a.r.right - 1 && b.r.right > a.r.left + 1);
+          const extra = Math.floor((bottom - ends[i]) / ratio);
           if (filled && !below && extra > 0) next[a.id] = extra;
         });
       }

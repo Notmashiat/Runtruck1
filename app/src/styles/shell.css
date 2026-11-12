@@ -84,7 +84,7 @@
   --ui-teal-soft: #0e2624;
   --ui-shadow: rgba(0, 0, 0, 0.6);
   --ui-overlay: rgba(0, 0, 0, 0.7);
-  --ui-island-shadow: 0 0 0 1px #1f1f1f, 0 8px 24px rgba(0, 0, 0, 0.5);
+  --ui-island-shadow: inset 0 0 0 1px #1f1f1f, 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 /* Classic (Settings › Appearance › Dark mode style, release 1.25): the blue-grey
    dark mode from before release 1.24, unchanged. */
@@ -127,7 +127,7 @@
   --ui-teal-soft: #12302d;
   --ui-shadow: rgba(0, 0, 0, 0.5);
   --ui-overlay: rgba(0, 0, 0, 0.6);
-  --ui-island-shadow: 0 0 0 1px #222b3a, 0 8px 24px rgba(0, 0, 0, 0.35);
+  --ui-island-shadow: inset 0 0 0 1px #222b3a, 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 /* On Midnight's near-black page every card has a thin edge. */
 :root[data-theme="dark"]:not([data-dark="classic"]) :is(.ui-card, .ui-kpi, .ui-tabs, .dash-card, .dash-empty-all, .set-nav, .set-group) {

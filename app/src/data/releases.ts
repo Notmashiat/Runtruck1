@@ -411,7 +411,7 @@ export const RELEASES: Release[] = [
     changes: [
       {
         id: 'topbar-island', kind: 'Updated', section: 'Everywhere', title: 'The search and the items to its right share one floating island (live for every company)',
-        details: 'The top bar is a single rounded panel, like the Dashboard: the search as a white pill on the left, and the date and time, the light / dark switch, Filters and the page\u2019s buttons on the right. Its edges line up with the page below it.',
+        details: 'The top bar is a single rounded panel, like the Dashboard: the search as a white pill on the left, and the date and time, the light / dark switch, Filters and the page\u2019s buttons on the right. Its edges line up with the page below it. Also fixed: in dark mode the islands\u2019 thin edge now shows along their top too, and on the Dashboard a widget can no longer be stretched over the one below it or out of the island (seen with two widgets per row, a collapsed sidebar, or Small or Large text).',
       },
     ],
   },
