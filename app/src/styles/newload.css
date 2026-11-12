@@ -570,3 +570,63 @@ span.inv-line-amt:not(.is-num) { display: flex; height: 40px; align-items: cente
 .nl-cf-title { font-size: 17px; font-weight: 600; line-height: 1.3; color: var(--nl-ink); }
 .nl-cf-desc { margin-top: 4px; font-size: 14px; line-height: 1.5; color: var(--nl-mute); }
 .nl-cf-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 24px; border-top: 1px solid var(--nl-line); background: var(--nl-canvas); }
+
+/* ── Release 1.36: Add fleet unit (AddFleet design) and the record popups ── */
+.nl-sr-input { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+.fu-pick { display: flex; height: 100%; cursor: pointer; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--nl-line); border-radius: 12px; background: var(--nl-surface); transition: border-color 150ms, background 150ms, box-shadow 150ms; }
+.fu-pick:hover { border-color: var(--nl-a200); }
+.fu-pick.is-small { padding-top: 10px; padding-bottom: 10px; }
+.fu-pick-ico { display: grid; width: 36px; height: 36px; flex: none; place-items: center; border-radius: 8px; background: var(--nl-canvas); color: var(--nl-mute); transition: background 150ms, color 150ms; }
+.fu-pick.is-small .fu-pick-ico { width: 32px; height: 32px; font-size: 13px; }
+.fu-pick-title { display: block; font-size: 14px; font-weight: 600; color: var(--nl-ink); }
+.fu-pick-title.is-medium { font-weight: 500; line-height: 1.25; }
+.fu-pick-sub { display: block; font-size: 13px; color: var(--nl-mute); }
+input:checked + .fu-pick { border-color: var(--nl-a400); background: var(--nl-a50); box-shadow: 0 0 0 4px var(--nl-a100); }
+input:checked + .fu-pick .fu-pick-ico { background: var(--nl-a600); color: #fff; }
+input:focus-visible + .fu-pick { box-shadow: 0 0 0 4px var(--nl-a200); }
+.fu-pick-off { opacity: .5; }
+.fu-pick-off .fu-pick, input:disabled + .fu-pick { cursor: default; }
+.fu-pick-off .fu-pick:hover { border-color: var(--nl-line); }
+.fu-split { padding-top: 20px; border-top: 1px solid var(--nl-line); }
+.fu-own { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 1024px) { .fu-own { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.fu-vin { display: flex; gap: 8px; }
+.fu-vin .nl-inp { flex: 1; min-width: 0; }
+.fu-decode { height: 40px; padding: 0 16px; }
+.fu-decode:disabled { cursor: not-allowed; opacity: .5; }
+.fu-decode .fu-ok { color: var(--nl-sage500); }
+.fu-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .025em; }
+.fu-plate { display: grid; grid-template-columns: minmax(0, 1fr) 80px; gap: 12px; }
+.fu-pr { padding-right: 40px !important; }
+.fu-suffix { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); pointer-events: none; font-size: 13px; color: var(--nl-mute); }
+.nl-inp.is-auto { border-color: var(--nl-sage500); background: var(--nl-sage50); }
+.fu-connect { display: inline-flex; height: 44px; align-items: center; gap: 10px; padding: 0 16px; border: 1px dashed var(--nl-a300); border-radius: 12px; background: color-mix(in srgb, var(--nl-a50) 60%, transparent); font-size: 14px; font-weight: 500; color: var(--nl-a700); transition: border-color 150ms, background 150ms; }
+.fu-connect:hover { border-color: var(--nl-a400); background: var(--nl-a50); }
+.fu-connect .fa-svg { font-size: 12px; }
+.fu-opt-ico { display: grid; width: 32px; height: 32px; flex: none; place-items: center; border-radius: 8px; background: var(--nl-canvas); font-size: 13px; color: var(--nl-mute); }
+.fu-opt-text { min-width: 0; }
+.fu-opt-a { display: block; font-size: 14px; font-weight: 500; color: var(--nl-ink); }
+.fu-opt-b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--nl-mute); }
+.fu-selected { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; border: 1px solid var(--nl-a200); border-radius: 12px; background: var(--nl-a50); }
+.fu-selected-main { display: flex; min-width: 0; align-items: flex-start; gap: 12px; }
+.fu-selected-ico { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: 12px; background: var(--nl-surface); color: var(--nl-a600); box-shadow: var(--nl-shadow-sm); }
+.fu-selected-a { font-size: 15px; font-weight: 600; color: var(--nl-ink); }
+.fu-selected-b { margin-top: 2px; font-size: 14px; color: var(--nl-mute); }
+.fu-selected-btns { display: flex; align-items: center; gap: 8px; }
+.fu-small { height: 36px !important; padding: 0 12px !important; font-size: 13px !important; }
+.fu-sum-unit { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px; border-radius: 12px; background: var(--nl-surface); box-shadow: 0 0 0 1px var(--nl-line); }
+.fu-sum-ico { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: 12px; background: var(--nl-a50); color: var(--nl-a600); }
+.fu-sum-unit > div { min-width: 0; }
+.fu-sum-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--nl-ink); }
+.fu-sum-type { font-size: 13px; color: var(--nl-mute); }
+.nl-sum dl.fu-sum-list > * + *, .nl-sum dl.nlr-summary > * + * { margin-top: 14px; }
+.fu-sum-list dd.fu-mono { word-break: break-all; font-size: 13px; }
+
+.nlr-wide { grid-column: 1 / -1; }
+.nlr-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.nlr-check { display: inline-flex; cursor: pointer; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--nl-line); border-radius: 10px; background: var(--nl-surface); font-size: 13px; color: var(--nl-ink); transition: border-color 150ms, background 150ms; }
+.nlr-check:hover { border-color: var(--nl-a200); }
+.nlr-check:has(input:checked) { border-color: var(--nl-a400); background: var(--nl-a50); }
+.nlr-check input { accent-color: var(--nl-a600); }
+.nlr-sum-row dd { overflow-wrap: anywhere; }
+.nl-sec.is-last.fu-picking { padding-bottom: 264px; }

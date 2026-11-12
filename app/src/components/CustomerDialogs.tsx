@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { faAddressBook, faBoxesStacked, faBuilding, faFileInvoiceDollar, faFolderOpen, type IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import { useAppShell } from '../context/AppShellContext';
 import type { BillDocument } from '../data/bills';
 import {
@@ -12,7 +13,8 @@ import { PHONE, STATE, ZIP } from '../lib/rules';
 import { getSettings } from '../lib/settingsStore';
 import { CustomerDocs } from './CustomerDocs';
 import { Field, useModal, useTracked } from './FormBits';
-import { RecordDialog, type SectionSpec } from './RecordDialog';
+import { NlRecordDialog, SumRow } from './NlRecordDialog';
+import type { SectionSpec } from './RecordDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string).trim() : '');
 const digits = (s: string) => s.replace(/\D/g, '');
@@ -95,6 +97,10 @@ function customerSections(takenNames: string[], reps: string[]): SectionSpec[] {
   ];
 }
 
+const SECTION_ICONS: Record<string, IconDefinition> = {
+  Company: faBuilding, Contacts: faAddressBook, Billing: faFileInvoiceDollar, Freight: faBoxesStacked, Documents: faFolderOpen,
+};
+
 // Add Customer and Edit customer. Editing also moves the customer to
 // inactive (or reactivates it).
 export function CustomerDialog({ customer, onClose }: { customer?: CustomerRecord; onClose: () => void }) {
@@ -116,10 +122,21 @@ export function CustomerDialog({ customer, onClose }: { customer?: CustomerRecor
 
   return (
     <>
-    <RecordDialog
+    <NlRecordDialog
+      icon={faBuilding}
+      description={customer ? 'Change the customer’s details below.' : 'Add a shipper, broker or other customer you haul for.'}
+      tip={{ title: 'Billing comes first', text: 'Invoices use the billing email, address and terms — fill those in before the first load.' }}
+      summary={(v) => (
+        <>
+          <SumRow label="Customer" value={val(v, 'name')} sub={val(v, 'type')} />
+          <SumRow label="Main contact" value={val(v, 'contact')} sub={val(v, 'email')} />
+          <SumRow label="Bill to" value={val(v, 'billTo') || val(v, 'name')} sub={[val(v, 'city'), [val(v, 'state'), val(v, 'zip')].filter(Boolean).join(' ')].filter(Boolean).join(', ')} />
+          <SumRow label="Terms" value={val(v, 'terms')} sub={val(v, 'credit') && `Credit: ${val(v, 'credit')}`} />
+        </>
+      )}
       heading={customer ? `Edit ${customer.name}` : 'New customer'}
       saveLabel={customer ? 'Save changes' : 'Add customer'}
-      sections={customerSections(taken, reps)}
+      sections={customerSections(taken, reps).map((x) => ({ ...x, icon: SECTION_ICONS[x.title] }))}
       initial={initial}
       isNew={!customer}
       recordLabel={customer ? customer.name : 'customer'}
@@ -129,8 +146,8 @@ export function CustomerDialog({ customer, onClose }: { customer?: CustomerRecor
       extraDirty={docsChanged || onFileChanged}
       footerExtra={
         customer && (customer.status === 'Active'
-          ? <button type="button" className="ui-btn ui-btn-danger" onClick={() => setInactivating(true)}>Move to inactive</button>
-          : <button type="button" className="ui-btn" onClick={reactivate}>Reactivate</button>)
+          ? <button type="button" className="nl-btn-danger-line nl-fbtn" onClick={() => setInactivating(true)}>Move to inactive</button>
+          : <button type="button" className="nl-btn-white nl-fbtn" onClick={reactivate}>Reactivate</button>)
       }
       onSave={(v) => saveCustomer({ ...customerFromForm(v, id, docs, USER.name, customer), onFile })}
       onDelete={customer ? () => deleteCustomer(customer.id) : undefined}

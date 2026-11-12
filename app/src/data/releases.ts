@@ -478,6 +478,36 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.35',
+    date: '2026-11-12',
+    title: 'Every popup in the New Load style',
+    changes: [
+      {
+        id: 'popups-restyle', kind: 'Updated', section: 'Everywhere', title: 'Popups match New Load (live for every company)',
+        details: 'Every popup (adding and editing drivers, trucks, trailers, customers, facilities, bills, payroll, HR and safety records, Filters, load status, messages, events, the Customize panel and the confirmations) now has the New Load look: rounder corners and a soft shadow over a blurred page, a tinted section menu with the open section as a white pill, taller rounded fields with an accent-coloured ring while you type, and rounded buttons with the main one in the accent colour. Confirmations look like the discard warning in New Load.',
+      },
+    ],
+  },
+  {
+    id: '1.36',
+    date: '2026-11-12',
+    title: 'New fleet, customer and facility popups; Unit Documents',
+    changes: [
+      {
+        id: 'fleet-unit-popup', kind: 'Updated', section: 'Fleet', title: 'Add fleet unit (live for every company)',
+        details: 'Adding or editing a truck or trailer uses one new popup: pick Tractor or Trailer, enter the unit number, the VIN (Decode VIN fills in the make, model and year from the U.S. government VIN service), plate and mileage, choose how it is owned (with the leasing or rental company and when the term ends), and connect the trailer it pulls or the tractor that pulls it. A summary and a list of required details sit on the right. Other details already on a unit are kept.',
+      },
+      {
+        id: 'record-popups', kind: 'Updated', section: 'Everywhere', title: 'Customer and facility popups (live for every company)',
+        details: 'Adding and editing customers and facilities (including Add facility from New Load) use the same layout: a section menu that shows what is done, every section on one page, a summary and the required details on the right.',
+      },
+      {
+        id: 'unit-documents', kind: 'New', section: 'Safety', title: 'Safety › Unit Documents (live for every company)',
+        details: 'A new tab for the safety team lists every active truck and trailer with its registration, next annual inspection, insurance and IFTA decal, flagged when expired, missing or inside the renewal window. Update opens a popup to change the dates. These dates are no longer part of the Add fleet unit popup.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

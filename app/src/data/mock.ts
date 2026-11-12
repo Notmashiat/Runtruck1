@@ -347,6 +347,7 @@ export const SECTION_TABS: Partial<Record<ViewKey, SectionTab[]>> = {
   safety: [
     { key: 'maintenance', label: 'Maintenance' },
     { key: 'driver-documents', label: 'Driver Documents' },
+    { key: 'unit-documents', label: 'Unit Documents' },
     { key: 'violations', label: 'Violations' },
     { key: 'settlements', label: 'Settlements' },
   ],

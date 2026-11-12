@@ -1,3 +1,6 @@
+import {
+  faAddressBook, faClock, faHelmetSafety, faLocationDot, faNoteSticky, faSquareParking, faTruckRampBox, faWarehouse, type IconDefinition,
+} from '@fortawesome/free-solid-svg-icons';
 import { useAppShell } from '../context/AppShellContext';
 import {
   AMENITIES, BOOKING, CUSTOMER_SITE_TYPES, DOCK_TYPES, EQUIPMENT_ACCEPTED, FACILITY_BLANK, FACILITY_TYPES, LOAD_TYPES, LUMPER,
@@ -8,7 +11,8 @@ import { nextId, YES_NO, type FormValues } from '../data/fleet';
 import { CUSTOMERS } from '../data/mock';
 import { NON_NEGATIVE, PHONE, POSITIVE, STATE, ZIP } from '../lib/rules';
 import { getSettings } from '../lib/settingsStore';
-import { RecordDialog, type SectionSpec } from './RecordDialog';
+import { NlRecordDialog, SumRow } from './NlRecordDialog';
+import type { SectionSpec } from './RecordDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string) : '');
 const typeIn = (types: string[]) => (v: FormValues) => types.includes(val(v, 'type'));
@@ -139,6 +143,13 @@ function sections(takenNames: string[]): SectionSpec[] {
   ];
 }
 
+const SECTION_ICONS: Record<string, IconDefinition> = {
+  Site: faWarehouse, Address: faLocationDot, 'Hours & appointments': faClock, 'Dock & loading': faTruckRampBox,
+  'Yard & services': faSquareParking, 'Driver rules': faHelmetSafety, Contacts: faAddressBook, Notes: faNoteSticky,
+};
+
+const hoursOf = (v: FormValues) => (val(v, 'open24') === 'Yes' ? 'Open 24 hours' : val(v, 'wkOpen') && val(v, 'wkClose') ? `Mon–Fri ${val(v, 'wkOpen')}–${val(v, 'wkClose')}` : '');
+
 // Add or edit a facility. `prefill` starts a new one from a load stop.
 // `onSaved` gets the facility as saved (New Load adds one without leaving the load).
 export function FacilityDialog({ facility, prefill, onSaved, onClose }: { facility?: Facility; prefill?: FormValues; onSaved?: (f: Facility) => void; onClose: () => void }) {
@@ -151,10 +162,21 @@ export function FacilityDialog({ facility, prefill, onSaved, onClose }: { facili
   const onLoads = facility ? stopsUsing(loads, facility.name).length : 0;
 
   return (
-    <RecordDialog
+    <NlRecordDialog
+      icon={faWarehouse}
+      description={facility ? 'Change the facility’s details below.' : 'Add a shipper, receiver, yard or other place your trucks go.'}
+      tip={{ title: 'Drivers see this', text: 'Hours, dock and driver rules show on every load stop at this facility.' }}
+      summary={(v) => (
+        <>
+          <SumRow label="Facility" value={val(v, 'name')} sub={val(v, 'type')} />
+          <SumRow label="Address" value={val(v, 'street')} sub={[val(v, 'city'), [val(v, 'state'), val(v, 'zip')].filter(Boolean).join(' ')].filter(Boolean).join(', ')} />
+          <SumRow label="Hours" value={hoursOf(v)} sub={val(v, 'scheduling')} />
+          <SumRow label="Contact" value={val(v, 'shipName')} sub={val(v, 'shipPhone')} />
+        </>
+      )}
       heading={facility ? `Edit — ${facility.name}` : 'New facility'}
       saveLabel={facility ? 'Save changes' : 'Add facility'}
-      sections={sections(facilities.filter((f) => f.id !== id).map((f) => f.name))}
+      sections={sections(facilities.filter((f) => f.id !== id).map((f) => f.name)).map((x) => ({ ...x, icon: SECTION_ICONS[x.title] }))}
       initial={initial}
       isNew={!facility}
       archived={facility?.archived}

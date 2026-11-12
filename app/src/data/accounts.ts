@@ -84,7 +84,7 @@ export const ACCOUNT_TYPES: { type: AccountType; about: string; preset: string[]
   { type: 'Broker / sales agent', about: 'Finds freight and customers and books loads.', preset: ['loads', 'planner', 'crm', 'facilities'] },
   { type: 'Accounting & billing', about: 'Invoices, collections, payroll and bills.', preset: ['loads', 'crm', ...every('accounting'), ...(PAYROLL_IN_HR ? some('hr', 'payroll') : []), ...some('settings', 'invoicing', 'messages')] },
   { type: 'Safety & compliance', about: 'Driver files, maintenance, violations and claims.', preset: [...every('fleet'), ...every('safety')] },
-  { type: 'Fleet manager', about: 'Trucks, trailers and their upkeep.', preset: [...every('fleet'), ...some('safety', 'maintenance'), 'facilities'] },
+  { type: 'Fleet manager', about: 'Trucks, trailers and their upkeep.', preset: [...every('fleet'), ...some('safety', 'maintenance', 'unit-documents'), 'facilities'] },
   // Pay details are not part of recruiting: Payroll is granted separately.
   { type: 'HR & recruiting', about: 'Hiring, onboarding and driver contracts.', preset: [...every('hr').filter((p) => p !== 'hr/payroll'), ...some('fleet', 'drivers'), ...some('safety', 'driver-documents')] },
   { type: 'Custom', about: 'Start from the Dashboard only and tick exactly what they need.', preset: [] },

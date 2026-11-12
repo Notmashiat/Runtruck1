@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import type { FormValues } from '../data/fleet';
 
 export type FieldType = 'text' | 'number' | 'date' | 'time' | 'url' | 'select' | 'textarea' | 'tel' | 'email' | 'checks' | 'password';
@@ -27,9 +28,11 @@ export interface SectionSpec {
   // A section that does not apply (e.g. reefer unit on a dry van) shows N/A.
   when?: (v: FormValues) => boolean;
   naText?: string;
+  // Its icon in the section menu of the New Load-style popups (NlRecordDialog).
+  icon?: IconDefinition;
 }
 
-interface RecordDialogProps {
+export interface RecordDialogProps {
   heading: string;
   saveLabel: string;
   sections: SectionSpec[];
@@ -57,18 +60,18 @@ interface RecordDialogProps {
   onClose: () => void;
 }
 
-const text = (v: FormValues, k: string) => {
+export const text = (v: FormValues, k: string) => {
   const x = v[k];
   return typeof x === 'string' ? x : '';
 };
 
-function visibleFields(s: SectionSpec, v: FormValues) {
+export function visibleFields(s: SectionSpec, v: FormValues) {
   if (s.when && !s.when(v)) return [];
   return s.fields.filter((f) => !f.show || f.show(v));
 }
 
 // Field key → problem, for every visible field.
-function validate(sections: SectionSpec[], v: FormValues): Record<string, string> {
+export function validate(sections: SectionSpec[], v: FormValues): Record<string, string> {
   const errors: Record<string, string> = {};
   for (const s of sections) {
     for (const f of visibleFields(s, v)) {

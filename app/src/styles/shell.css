@@ -1104,3 +1104,67 @@ a.ui-link { padding-block: 7px; margin-block: -7px; }
 .ui-notice-delete { font-size: 13px; font-weight: 700; color: #fff; background: var(--ui-red); }
 :root[data-theme="dark"] .ui-notice-delete { color: #1a0d0c; }
 .ui-notice-delete:hover { filter: brightness(1.08); }
+
+/* — Every popup in the New Load style (release 1.35): rounder, softly
+   shadowed over a blurred backdrop; a tinted section menu with the open
+   section as a white pill; taller rounded fields with an accent ring when
+   in use; rounded buttons. The New Load and New Invoice popups have their
+   own styles (newload.css). — */
+.ui-dialog { border-radius: 24px; box-shadow: 0 30px 80px -20px rgba(30, 40, 70, 0.35), 0 0 0 1px var(--ui-border); }
+:root[data-theme="dark"] .ui-dialog { box-shadow: 0 0 0 1px var(--ui-border), 0 30px 80px -20px rgba(0, 0, 0, 0.7); }
+.ui-dialog::backdrop { background: rgba(15, 23, 42, 0.3); backdrop-filter: blur(3px); }
+:root[data-theme="dark"] .ui-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+.ui-dialog.is-sheet { border-radius: 24px 0 0 24px; }
+
+/* The section menu on the left. */
+.ui-dialog-nav { width: 252px; gap: 2px; padding: 16px 12px; background: color-mix(in srgb, var(--ui-text) 3%, var(--ui-card)); border-right: 1px solid var(--ui-border); }
+.ui-dialog-title { padding: 6px 12px 16px; font-size: 18px; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
+.ui-dialog-nav-item { min-height: 40px; padding: 8px 12px; font-size: 13.5px; font-weight: 500; color: var(--ui-muted); border-radius: 12px; transition: background 150ms, color 150ms; }
+.ui-dialog-nav-item:hover { color: var(--ui-text); background: color-mix(in srgb, var(--ui-card) 70%, transparent); }
+.ui-dialog-nav-item.is-active { color: var(--ui-text); background: var(--ui-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px var(--ui-border); }
+
+/* The body, its heading and the close button. */
+.ui-dialog-body { padding: 24px 28px; }
+.ui-dialog .ui-h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.ui-dialog .ui-p { font-size: 13px; line-height: 1.5; color: var(--ui-muted); }
+.ui-dialog-close { top: 14px; right: 14px; display: grid; place-items: center; width: 40px; height: 40px; font-size: 18px; border-radius: 12px; }
+.ui-dialog-close:hover { background: color-mix(in srgb, var(--ui-text) 5%, var(--ui-card)); }
+
+/* Fields. */
+.ui-dialog .ui-field { gap: 6px; }
+.ui-dialog .ui-field-label { font-size: 14px; font-weight: 500; color: var(--ui-text); }
+.ui-dialog .ui-input {
+  height: 40px; padding: 0 14px; border-radius: 12px; border-color: var(--ui-border);
+  background: color-mix(in srgb, var(--ui-text) 2%, var(--ui-card)); transition: border-color 150ms, box-shadow 150ms, background 150ms;
+}
+.ui-dialog textarea.ui-input { height: auto; padding: 10px 14px; line-height: 22px; }
+.ui-dialog .ui-input:hover { border-color: var(--ui-dash); }
+.ui-dialog .ui-input:focus, .ui-dialog .ui-input:focus-visible {
+  outline: none; border-color: color-mix(in srgb, var(--ui-primary) 60%, var(--ui-card)); background: var(--ui-card);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ui-primary) 16%, transparent);
+}
+.ui-dialog .ui-field.is-invalid .ui-input, .ui-dialog .ui-input.is-bad { border-color: var(--ui-red); background: var(--ui-card); }
+.ui-dialog .ui-field.is-invalid .ui-input:focus, .ui-dialog .ui-input.is-bad:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ui-red) 16%, transparent); }
+.ui-dialog .ui-field-error { font-size: 13px; }
+.ui-dialog .ui-field-help { font-size: 13px; }
+.ui-dialog .ui-panel { padding: 20px; border-radius: 16px; }
+.ui-dialog .ui-note, .ui-dialog .ui-errors { border-radius: 12px; }
+
+/* Buttons: rounded rather than pills, the main one in the accent colour. */
+.ui-dialog .ui-btn { height: 40px; padding: 0 16px; border-radius: 12px; font-weight: 500; }
+.ui-dialog .ui-btn-primary { font-weight: 600; }
+.ui-dialog .ui-btn-sm { height: 32px; padding: 0 12px; border-radius: 10px; }
+.ui-dialog-foot { gap: 8px; padding: 14px 24px; }
+
+/* A question ("Delete this driver?"): like the discard warning over New Load. */
+.ui-dialog.is-confirm { border-radius: 20px; }
+.ui-dialog.is-confirm .ui-dialog-body { padding: 24px 24px 20px; }
+.ui-dialog.is-confirm .ui-h2 { font-size: 17px; }
+.ui-dialog.is-confirm .ui-dialog-foot {
+  justify-content: flex-end; padding: 14px 24px; border-top: 1px solid var(--ui-border);
+  background: color-mix(in srgb, var(--ui-text) 3%, var(--ui-card));
+}
+@media (max-width: 760px) {
+  .ui-dialog.is-large .ui-dialog-nav { border-right: 0; border-bottom: 1px solid var(--ui-border); }
+  .ui-dialog.is-large .ui-dialog-title { font-size: 15px; padding: 0 8px 0 4px; }
+}

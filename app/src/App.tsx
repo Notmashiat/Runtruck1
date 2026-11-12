@@ -37,6 +37,7 @@ const EmployeeContractsTab = page(() => import('./pages/app/hr/EmployeeContracts
 const OnboardingTab = page(() => import('./pages/app/hr/OnboardingTab'), 'OnboardingTab');
 const MaintenanceTab = page(() => import('./pages/app/safety/MaintenanceTab'), 'MaintenanceTab');
 const DriverDocumentsTab = page(() => import('./pages/app/safety/DriverDocumentsTab'), 'DriverDocumentsTab');
+const UnitDocumentsTab = page(() => import('./pages/app/safety/UnitDocumentsTab'), 'UnitDocumentsTab');
 const ViolationsTab = page(() => import('./pages/app/safety/ViolationsTab'), 'ViolationsTab');
 const ClaimSettlementsTab = page(() => import('./pages/app/safety/ClaimSettlementsTab'), 'ClaimSettlementsTab');
 const AccountManagerTab = page(() => import('./pages/app/developer/AccountManagerTab'), 'AccountManagerTab');
@@ -119,7 +120,7 @@ export default function App() {
           ['employee-contracts', EmployeeContractsTab], ['onboarding', OnboardingTab],
         ])}
         {section('safety', [
-          ['maintenance', MaintenanceTab], ['driver-documents', DriverDocumentsTab], ['violations', ViolationsTab], ['settlements', ClaimSettlementsTab],
+          ['maintenance', MaintenanceTab], ['driver-documents', DriverDocumentsTab], ['unit-documents', UnitDocumentsTab], ['violations', ViolationsTab], ['settlements', ClaimSettlementsTab],
         ])}
         {/* Developer is RunTruck's own console: super admins under Company ID 1 only. */}
         {section('developer', [['account-manager', AccountManagerTab], ['clients', ClientsTab], ['accounts', AccountsTab], ['deactivated', DeactivatedTab], ['releases', ReleasesTab], ['errors', ErrorLogTab]])}
