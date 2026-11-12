@@ -404,6 +404,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.29',
+    date: '2026-11-11',
+    title: 'One top bar island',
+    changes: [
+      {
+        id: 'topbar-island', kind: 'Updated', section: 'Everywhere', title: 'The search and the items to its right share one floating island (live for every company)',
+        details: 'The top bar is a single rounded panel, like the Dashboard: the search as a white pill on the left, and the date and time, the light / dark switch, Filters and the page\u2019s buttons on the right. Its edges line up with the page below it.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

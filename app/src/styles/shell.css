@@ -990,3 +990,17 @@ a.ui-link { padding-block: 7px; margin-block: -7px; }
   :is(.ui-link, .ui-id-btn) { padding-block: 12px; margin-block: -12px; }
   :is(.ui-table td, .rel-pending-head) > input[type="checkbox"], .ui-check input { width: 24px; height: 24px; }
 }
+
+/* — One top-bar island (release 1.29): the search and everything to its right
+   share one floating panel, like the Dashboard's — the search a white pill on
+   the left, the clock, light/dark switch, Filters and the page's buttons on
+   the right. — */
+.ui-topbar {
+  /* Inset like the page below it (whose side padding keeps focus rings in
+     view), so the top bar and the page's islands share the same edges. */
+  margin-inline: 2px; gap: 10px; padding: 6px;
+  background: var(--ui-island-bg); border-radius: var(--ui-island-radius); box-shadow: var(--ui-island-shadow);
+}
+.ui-topbar > .ui-island { min-height: 44px; padding: 0; background: none; border-radius: 0; box-shadow: none; }
+.ui-topbar > .ui-search-island { padding: 0 8px 0 16px; background: var(--ui-card); border-radius: 999px; box-shadow: 0 0 0 1px var(--ui-border); }
+.ui-topbar > .ui-topbar-right { padding: 0 0 0 12px; }
