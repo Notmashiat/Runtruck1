@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadWithRetry, reloadForNewVersion, stylesMissing } from './lazyPage';
+import { failedFile, loadWithRetry, reloadForNewVersion, stylesMissing } from './lazyPage';
 
 const fail = () => new TypeError('Failed to fetch dynamically imported module: https://x/assets/AppLayout-abc.js');
 
@@ -24,6 +24,7 @@ describe('Downloading a screen right after an update', () => {
 
   it('still failing, it reloads up to three times, then shows the error', async () => {
     vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('')));
     const reload = vi.fn();
     vi.stubGlobal('location', { ...window.location, reload });
     const load = vi.fn().mockRejectedValue(fail());
@@ -62,10 +63,34 @@ describe('A page opened before its stylesheet arrived', () => {
 
   it('reloads at most three times in two minutes', async () => {
     vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('')));
     const reload = vi.fn();
     vi.stubGlobal('location', { ...window.location, reload });
     expect([reloadForNewVersion(), reloadForNewVersion(), reloadForNewVersion(), reloadForNewVersion()]).toEqual([true, true, true, false]);
     await vi.advanceTimersByTimeAsync(5000);
     expect(reload).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('A file the browser remembers as missing', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
+  });
+
+  it('is asked for again past the browser cache before reloading', async () => {
+    vi.useFakeTimers();
+    const order: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => { order.push(`fetch ${url} ${init?.cache}`); return new Response(''); }));
+    vi.stubGlobal('location', { ...window.location, reload: vi.fn(() => order.push('reload')) });
+    reloadForNewVersion(['https://x/assets/index-abc.css']);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(order).toEqual(['fetch https://x/assets/index-abc.css reload', 'reload']);
+  });
+
+  it('finds the file named in a failed download', () => {
+    expect(failedFile(new TypeError('Failed to fetch dynamically imported module: https://x.app/assets/AppLayout-B1.js'))).toEqual(['https://x.app/assets/AppLayout-B1.js']);
+    expect(failedFile(new Error('Something else'))).toEqual([]);
   });
 });

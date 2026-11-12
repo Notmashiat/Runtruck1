@@ -20,7 +20,7 @@ const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve,
 // Reload to fetch the newest files, unless that has already been tried
 // MAX_RELOADS times in the last RELOAD_WINDOW_MS (then false: it would only
 // loop). The first reload is at once; later ones wait 2 s, then 4 s.
-export function reloadForNewVersion(): boolean {
+export function reloadForNewVersion(files: string[] = []): boolean {
   let times: number[];
   try {
     const saved = JSON.parse(sessionStorage.getItem(RELOADS_KEY) ?? '[]') as unknown;
@@ -31,13 +31,33 @@ export function reloadForNewVersion(): boolean {
     // Storage blocked: no way to know how often it has reloaded, so don't.
     return false;
   }
-  window.setTimeout(() => window.location.reload(), times.length * 2000);
+  window.setTimeout(() => void refetch(files).then(() => window.location.reload()), times.length * 2000);
   return true;
+}
+
+// The server marks everything under /assets as never changing, and the
+// browser keeps its answer for a year — a "not found" given while an update
+// was still arriving included. Ask for those files again past the browser's
+// copy, so the reload gets the real ones instead of the remembered failure.
+async function refetch(files: string[]) {
+  await Promise.all(files.map((url) => fetch(url, { cache: 'reload' }).catch(() => undefined)));
+}
+
+// The file a failed screen download names, if any.
+export function failedFile(error: unknown): string[] {
+  const text = error instanceof Error ? error.message : String(error);
+  const url = text.match(/https?:\/\/[^\s'"]+?\.(?:js|css)\b/)?.[0];
+  return url ? [url] : [];
+}
+
+// The app's own stylesheets (the ones under /assets).
+export function ownStylesheets(): string[] {
+  return [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((l) => l.href).filter((h) => h.includes('/assets/'));
 }
 
 function reloadSoon(error: unknown): Promise<never> {
   // Reloaded enough times already and it still fails: stop, and show the error.
-  if (!isLoadFailure(error) || !reloadForNewVersion()) throw error;
+  if (!isLoadFailure(error) || !reloadForNewVersion(failedFile(error))) throw error;
   // Keep the "Loading…" state on screen until the reload takes over.
   return new Promise<never>(() => undefined);
 }
