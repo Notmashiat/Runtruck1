@@ -8,7 +8,7 @@
 }
 :root[data-density="compact"] .dash-island { gap: 14px; padding: 16px; }
 .ui-main > .dash-island.is-filled { flex-grow: 1; }
-.dash-top { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.dash-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 40px; }
 .dash-hello { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 .dash-today { margin-top: 2px; font-size: 13px; color: var(--ui-muted); }
 .dash-customize { display: inline-flex; align-items: center; gap: 8px; }
@@ -211,8 +211,10 @@
 
 /* — The profit graph (release 1.32, DashboardCharts.tsx): the total and its
    change on the left, this period against the one before on the right. — */
-.pchart { container-type: inline-size; display: grid; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); gap: 16px; height: 100%; min-height: 0; }
-@container (max-width: 520px) { .pchart { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); } .pchart-stat { justify-content: flex-start; } }
+.pchart { display: grid; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); gap: 16px; height: 100%; min-height: 0; }
+/* The card body is what is measured: a container query cannot look at the
+   element it styles (before release 1.37 the narrow layout never applied). */
+.dash-card-body:has(> .pchart) { container-type: inline-size; }
 .pchart-stat { display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; min-width: 0; padding-bottom: 24px; }
 .pchart-total { font-size: clamp(28px, 3vw, 40px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
 .pchart-delta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--ui-muted); }
@@ -222,9 +224,15 @@
 .pchart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: 12px; color: var(--ui-muted); }
 .pchart-legend i, .pchart-tip i { display: inline-block; width: 14px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--ui-primary); }
 .pchart-legend i.is-before, .pchart-tip i.is-before { border-top: 2px dashed var(--ui-muted); }
-.pchart-plot { position: relative; min-width: 0; min-height: 120px; outline: none; border-radius: 8px; }
+.pchart-plot { position: relative; min-width: 0; min-height: 80px; outline: none; border-radius: 8px; }
 .pchart-plot:focus-visible { box-shadow: 0 0 0 2px var(--ui-primary); }
 .pchart-plot svg { display: block; cursor: crosshair; touch-action: pan-y; }
+@container (max-width: 520px) {
+  .pchart { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(150px, 1fr); gap: 8px; }
+  .pchart-stat { justify-content: flex-start; gap: 6px; padding-bottom: 0; }
+  .pchart-delta { gap: 6px; font-size: 12px; }
+  .pchart-legend { margin-top: 0; }
+}
 .pchart-grid { stroke: var(--ui-border); stroke-dasharray: 4 4; }
 .pchart-grid.is-zero { stroke: var(--ui-dash); stroke-dasharray: none; }
 .pchart-ylabel, .pchart-xlabel { font-size: 11px; font-weight: 500; fill: var(--ui-muted); font-variant-numeric: tabular-nums; }
@@ -246,22 +254,46 @@
 /* — The on-time gauge (release 1.32): ticks round a half circle, filled to the
    on-time share, a mark at the target, the figure in the middle. — */
 .gauge { display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; min-height: 0; }
-.gauge-arc { flex: 1; min-height: 0; width: 100%; display: grid; }
-.gauge-arc > * { grid-area: 1 / 1; }
-.gauge svg { width: 100%; height: 100%; min-height: 0; }
+.gauge-arc { flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-end; justify-content: center; container-type: size; }
+/* The dial keeps its shape: as wide as the card allows, never taller than the
+   space it has; the number and the line under it are sized from the dial. */
+.gauge-dial { position: relative; width: 100%; max-width: 280px; aspect-ratio: 212 / 114; container-type: inline-size; }
+@supports (width: 1cqh) { .gauge-dial { max-width: none; width: min(100cqw, 100cqh * 212 / 114); } }
+.gauge-dial svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: visible; }
 .gauge line { stroke-width: 3.6; stroke-linecap: round; }
 .gauge-off { stroke: var(--ui-border); }
 .gauge.is-good .gauge-on { stroke: var(--ui-green); }
 .gauge.is-ok .gauge-on { stroke: var(--ui-amber); }
 .gauge.is-bad .gauge-on { stroke: var(--ui-red); }
 .gauge-target { stroke: var(--ui-text-2) !important; stroke-width: 2.4 !important; }
-.gauge-center { align-self: end; justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 4px; text-align: center; }
-.gauge-value { font-size: clamp(28px, 3.2vw, 42px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
-.gauge-sub { font-size: 12px; color: var(--ui-muted); }
+.gauge-center { position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%); width: 58%; display: flex; flex-direction: column; align-items: center; gap: 2cqw; text-align: center; }
+.gauge-value { font-size: 16cqw; font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gauge-sub { font-size: clamp(9px, 5cqw, 13px); line-height: 1.2; color: var(--ui-muted); white-space: nowrap; }
+/* Too little room for the dial (a short window squeezes the Dashboard): the
+   number and its line on their own, never over anything. */
+/* A small dial keeps just the number inside it. */
+@container (max-height: 110px) { .gauge-sub { display: none; } }
+@container (max-height: 46px) {
+  .gauge-dial { width: 100%; height: 100%; aspect-ratio: auto; display: flex; align-items: center; justify-content: center; container-type: normal; }
+  .gauge-dial svg { display: none; }
+  .gauge-center { position: static; transform: none; width: auto; gap: 2px; }
+  .gauge-value { font-size: clamp(16px, 45cqh, 30px); }
+  .gauge-sub { font-size: 11px; }
+}
 .gauge-delta { font-size: 12px; font-weight: 600; }
 .gauge-delta.is-good { color: var(--ui-green); }
 .gauge-delta.is-bad { color: var(--ui-red); }
-.gauge-foot { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.gauge-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; flex: none; }
 .gauge-details { display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; }
-.gauge-details-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--ui-muted); }
+.gauge-details-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; font-size: 13px; color: var(--ui-muted); }
+.gauge-details-head > span { min-width: 0; }
 .gauge-details .dash-list { overflow: auto; min-height: 0; }
+
+/* A late load on two lines (release 1.37): customer and lane with the days
+   late, the dates under them, so nothing runs into anything on narrow cards. */
+.dash-row.is-two-line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "dot label value" ". meta meta"; column-gap: 10px; row-gap: 2px; align-items: center; }
+.dash-row.is-two-line .dash-dot { grid-area: dot; }
+.dash-row.is-two-line .dash-row-label { grid-area: label; }
+.dash-row.is-two-line .dash-row-value { grid-area: value; }
+.dash-row.is-two-line .dash-row-meta { grid-area: meta; overflow: hidden; text-overflow: ellipsis; }
+.count-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

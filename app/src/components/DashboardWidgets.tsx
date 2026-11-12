@@ -4,11 +4,12 @@ import { useAppShell } from '../context/AppShellContext';
 import type { WidgetId } from '../data/dashboard';
 import { demoHistory } from '../data/demoHistory';
 import {
-  ON_TIME_TARGET, change, costsFromBills, daysLate, deliveriesFromLoads, lanesByProfit, onTimeByCustomer, onTimeRate, periodOf, periodRange,
+  ON_TIME_TARGET, change, costsFromBills, deliveriesFromLoads, lanesByProfit, onTimeByCustomer, onTimeRate, periodOf, periodRange,
   previousRange, profitSeries, summarize, type Cost, type Delivery, type Period,
 } from '../data/insights';
-import { OnTimeGauge, ProfitChart } from './DashboardCharts';
-import { TODAY, fmtDate, usd0 } from '../data/invoicing';
+import { LateRow, OnTimeGauge, ProfitChart } from './DashboardCharts';
+import { CountUp, useIntro } from './CountUp';
+import { TODAY, usd0 } from '../data/invoicing';
 import { compactUsd } from '../data/metrics';
 import { ACTIVE_STATUSES } from '../data/mock';
 
@@ -123,6 +124,7 @@ export function kpiFor(id: WidgetId, d: DashData): KpiView | null {
 
 function HBars({ rows, empty }: { rows: { key: string; value: number; label: string; meta?: string }[]; empty: string }) {
   const top = Math.max(1, ...rows.map((r) => r.value));
+  const grow = useIntro();
   if (rows.length === 0) return <div className="dash-empty">{empty}</div>;
   return (
     <div className="dash-list">
@@ -131,9 +133,9 @@ function HBars({ rows, empty }: { rows: { key: string; value: number; label: str
           <div className="dash-hbar-top">
             <span className="dash-row-label">{r.key}</span>
             {r.meta && <span className="dash-row-meta">{r.meta}</span>}
-            <span className="dash-row-value">{r.label}</span>
+            <span className="dash-row-value"><CountUp text={r.label} /></span>
           </div>
-          <div className="dash-hbar-track"><span style={{ width: `${Math.max(0, r.value / top) * 100}%` }} /></div>
+          <div className="dash-hbar-track"><span style={{ width: `${Math.max(0, r.value / top) * 100 * grow}%` }} /></div>
         </div>
       ))}
     </div>
@@ -142,6 +144,7 @@ function HBars({ rows, empty }: { rows: { key: string; value: number; label: str
 
 function OnTimeByCustomer({ d }: { d: DashData }) {
   const rows = onTimeByCustomer(d.deliveries, d.range);
+  const grow = useIntro();
   if (rows.length === 0) return <div className="dash-empty">No deliveries in this period.</div>;
   return (
     <table className="ui-table dash-table">
@@ -160,8 +163,8 @@ function OnTimeByCustomer({ d }: { d: DashData }) {
               <td className="num">{r.late ? `${r.avgDaysLate.toFixed(1)} d` : '—'}</td>
               <td>
                 <div className={`dash-rate ${tone}`}>
-                  <div className="dash-rate-track"><span style={{ width: pct(rate) }} /></div>
-                  <b>{pct(rate)}</b>
+                  <div className="dash-rate-track"><span style={{ width: pct(rate * grow) }} /></div>
+                  <b><CountUp text={pct(rate)} /></b>
                 </div>
               </td>
             </tr>
@@ -175,18 +178,7 @@ function OnTimeByCustomer({ d }: { d: DashData }) {
 function LateLoads({ d }: { d: DashData }) {
   const late = d.now.late.slice(0, 12);
   if (late.length === 0) return <div className="dash-empty">Every load in this period was on time.</div>;
-  return (
-    <div className="dash-list">
-      {late.map((l) => (
-        <div key={l.id} className="dash-row">
-          <span className="dash-dot is-amber" />
-          <span className="dash-row-label">{l.customer} · {l.lane}</span>
-          <span className="dash-row-meta">Booked {fmtDate(l.scheduled, true)} · delivered {fmtDate(l.delivered, true)}</span>
-          <span className="dash-row-value">{daysLate(l)} d late</span>
-        </div>
-      ))}
-    </div>
-  );
+  return <div className="dash-list">{late.map((l) => <LateRow key={l.id} l={l} />)}</div>;
 }
 
 const muted = (s: string) => <span className="dash-head-meta">{s}</span>;

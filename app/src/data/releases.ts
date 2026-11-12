@@ -508,6 +508,25 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.37',
+    date: '2026-11-12',
+    title: 'Dashboard: the dial fixed, smooth graph, opening animation',
+    changes: [
+      {
+        id: 'dash-gauge-fit', kind: 'Fixed', section: 'Dashboard', title: 'On-time dial and its details fit every screen (live for every company)',
+        details: 'The percentage now sits inside the dial at every card size instead of on top of it; on a very small card the dial makes way for the number. Show details lists each late load on two lines (customer and lane with the days late, then the dates), so nothing runs into anything. Widgets are no longer squeezed below a usable size on short windows — the page scrolls instead — and the Total profit card and the Customize button fit on a phone.',
+      },
+      {
+        id: 'dash-smooth-graph', kind: 'Updated', section: 'Dashboard', title: 'Smooth profit graph (live for every company)',
+        details: 'The profit lines are drawn as smooth curves through each day, without inventing highs or lows between them.',
+      },
+      {
+        id: 'dash-intro', kind: 'New', section: 'Dashboard', title: 'Opening animation (live for every company)',
+        details: 'When the Dashboard opens, the on-time dial fills from left to right, the profit graph is drawn in from the left, and the numbers on the other widgets count up from zero. If your device is set to reduce motion, the finished values show straight away.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

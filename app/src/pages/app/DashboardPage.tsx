@@ -12,8 +12,13 @@ import { USER } from '../../data/mock';
 import { formatNow, hourNow, useNow } from '../../lib/clock';
 import { isLive } from '../../lib/releases';
 import { usePersisted } from '../../lib/persist';
+import { CountUp } from '../../components/CountUp';
 
 const ROW = 10; // grid row unit (px); widget heights snap to it
+// Release 1.37: widgets are never squeezed below this share of their height
+// (a very short window scrolls instead), so a card always has room to show
+// what is in it.
+const MIN_FIT = 0.65;
 // The widgets count as filling the window when the tallest column ends this
 // close to the bottom (the grid's spacing below the last widget).
 const FILLED_WITHIN = 24;
@@ -97,7 +102,7 @@ export function DashboardPage() {
       const top = (grid.getBoundingClientRect().top - main.getBoundingClientRect().top) / ratio + main.scrollTop;
       const room = main.clientHeight - top - spaceBelow(grid, main) - 1;
       const full = grid.offsetHeight / shownScale.current;
-      setScale(full > 0 ? Math.min(1, Math.floor((room / full) * 1000) / 1000) : 1);
+      setScale(full > 0 ? Math.max(MIN_FIT, Math.min(1, Math.floor((room / full) * 1000) / 1000)) : 1);
     };
     const ro = new ResizeObserver(measure);
     ro.observe(main);
@@ -307,7 +312,7 @@ export function DashboardPage() {
                     {o.notes && <div className="dash-kpi-note">{kpi.note}</div>}
                     <div className="dash-kpi-foot">
                       {kpi.delta && <span className={`dash-kpi-delta${kpi.delta.good ? ' is-good' : ' is-bad'}`} title={kpi.delta.title}>{kpi.delta.text}</span>}
-                      <div className="dash-kpi-value">{kpi.value}</div>
+                      <div className="dash-kpi-value"><CountUp text={kpi.value} /></div>
                     </div>
                   </>
                 )}
