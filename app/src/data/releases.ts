@@ -467,6 +467,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.34',
+    date: '2026-11-12',
+    title: 'Clear and delete notifications',
+    changes: [
+      {
+        id: 'notifications-delete', kind: 'Updated', section: 'Everywhere', title: 'Clear all, and delete notifications one at a time (live for every company)',
+        details: 'In the notifications list, Clear all (beside Recent) removes every recent notification and keeps the urgent ones, which stay until what they are about is dealt with. To delete one, slide it to the left (or press Delete on it): a trash button appears; tap it and it turns into a red Delete, which removes the notification. Deleted notifications stay gone after a reload; new ones still arrive.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

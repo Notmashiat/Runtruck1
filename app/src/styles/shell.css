@@ -1080,3 +1080,27 @@ a.ui-link { padding-block: 7px; margin-block: -7px; }
 .ui-notice.is-overdue .ui-notice-dot, .ui-notice.is-document .ui-notice-dot { background: var(--ui-amber); }
 .ui-notice-text { flex: 1; min-width: 0; }
 .ui-notice-time { flex: none; font-size: 11px; font-weight: 500; color: var(--ui-muted); white-space: nowrap; }
+
+/* — Deleting notifications (release 1.34): Clear all beside Recent; a row
+   slides left to show a trash button, which turns into a red Delete. — */
+.ui-bell-group.is-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ui-bell-clear {
+  padding: 4px 6px; margin: -4px -6px; font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none;
+  color: var(--ui-primary); background: none; border: 0; border-radius: 6px; cursor: pointer;
+}
+.ui-bell-clear:hover { color: var(--ui-primary-hover); text-decoration: underline; }
+.ui-bell-hint { margin: 6px 10px 2px; font-size: 11px; color: var(--ui-muted); }
+.ui-notice-row { position: relative; overflow: hidden; border-radius: 10px; }
+.ui-notice-row + .ui-notice-row { margin-top: 2px; }
+.ui-notice-row .ui-notice { position: relative; z-index: 1; background: var(--ui-card); touch-action: pan-y; user-select: none; transition: transform 180ms ease; }
+.ui-notice-row .ui-notice:hover { background: var(--ui-hover); }
+.ui-notice-row .ui-notice.is-urgent { background: color-mix(in srgb, var(--ui-red) 12%, var(--ui-card)); }
+.ui-notice-row .ui-notice.is-dragging { transition: none; }
+@media (prefers-reduced-motion: reduce) { .ui-notice-row .ui-notice { transition: none; } }
+.ui-notice-actions { position: absolute; top: 0; right: 0; bottom: 0; display: flex; align-items: stretch; justify-content: flex-end; }
+.ui-notice-trash, .ui-notice-delete { flex: 1; border: 0; font: inherit; cursor: pointer; border-radius: 0 10px 10px 0; }
+.ui-notice-trash { display: grid; place-items: center; font-size: 15px; color: var(--ui-red); background: var(--ui-red-soft); }
+.ui-notice-trash:hover { background: color-mix(in srgb, var(--ui-red) 22%, var(--ui-card)); }
+.ui-notice-delete { font-size: 13px; font-weight: 700; color: #fff; background: var(--ui-red); }
+:root[data-theme="dark"] .ui-notice-delete { color: #1a0d0c; }
+.ui-notice-delete:hover { filter: brightness(1.08); }
