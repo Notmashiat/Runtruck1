@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadWithRetry } from './lazyPage';
+import { loadWithRetry, reloadForNewVersion, stylesMissing } from './lazyPage';
 
 const fail = () => new TypeError('Failed to fetch dynamically imported module: https://x/assets/AppLayout-abc.js');
 
@@ -43,5 +43,29 @@ describe('Downloading a screen right after an update', () => {
     const load = vi.fn().mockRejectedValue(new Error('Something else broke'));
     await expect(loadWithRetry(load)).rejects.toThrow('Something else broke');
     expect(load).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('A page opened before its stylesheet arrived', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
+    document.documentElement.style.removeProperty('--ui-bg');
+  });
+
+  it('notices the stylesheet is missing, and not once it has loaded', () => {
+    expect(stylesMissing()).toBe(true);
+    document.documentElement.style.setProperty('--ui-bg', '#edf0f5');
+    expect(stylesMissing()).toBe(false);
+  });
+
+  it('reloads at most three times in two minutes', async () => {
+    vi.useFakeTimers();
+    const reload = vi.fn();
+    vi.stubGlobal('location', { ...window.location, reload });
+    expect([reloadForNewVersion(), reloadForNewVersion(), reloadForNewVersion(), reloadForNewVersion()]).toEqual([true, true, true, false]);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(reload).toHaveBeenCalledTimes(3);
   });
 });

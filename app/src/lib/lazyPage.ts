@@ -17,23 +17,36 @@ const MAX_RELOADS = 3;
 
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
-function reloadSoon(error: unknown): Promise<never> {
-  if (!isLoadFailure(error)) throw error;
-  let times: number[] = [];
+// Reload to fetch the newest files, unless that has already been tried
+// MAX_RELOADS times in the last RELOAD_WINDOW_MS (then false: it would only
+// loop). The first reload is at once; later ones wait 2 s, then 4 s.
+export function reloadForNewVersion(): boolean {
+  let times: number[];
   try {
     const saved = JSON.parse(sessionStorage.getItem(RELOADS_KEY) ?? '[]') as unknown;
     times = Array.isArray(saved) ? saved.filter((t): t is number => typeof t === 'number' && Date.now() - t < RELOAD_WINDOW_MS) : [];
-    // Reloaded enough times already and it still fails: stop, and show the error.
-    if (times.length >= MAX_RELOADS) throw error;
+    if (times.length >= MAX_RELOADS) return false;
     sessionStorage.setItem(RELOADS_KEY, JSON.stringify([...times, Date.now()]));
   } catch {
-    // Storage blocked (or out of reloads): the error boundary takes over.
-    throw error;
+    // Storage blocked: no way to know how often it has reloaded, so don't.
+    return false;
   }
-  // The first reload is at once; later ones wait 2 s, then 4 s.
   window.setTimeout(() => window.location.reload(), times.length * 2000);
+  return true;
+}
+
+function reloadSoon(error: unknown): Promise<never> {
+  // Reloaded enough times already and it still fails: stop, and show the error.
+  if (!isLoadFailure(error) || !reloadForNewVersion()) throw error;
   // Keep the "Loading…" state on screen until the reload takes over.
   return new Promise<never>(() => undefined);
+}
+
+// The app's stylesheet has loaded when its colour tokens exist. Opened while
+// a new version is reaching every server, the page can get the scripts but
+// not the stylesheet, and shows as plain, unstyled text.
+export function stylesMissing(): boolean {
+  return !getComputedStyle(document.documentElement).getPropertyValue('--ui-bg').trim();
 }
 
 // Download a screen; if that fails, once more after a moment, then reload.
