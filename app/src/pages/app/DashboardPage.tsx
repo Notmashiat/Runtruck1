@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { useNavigate } from 'react-router-dom';
 import { DashboardCustomize } from '../../components/DashboardCustomize';
 import { cardFor, kpiFor, useDashboardData } from '../../components/DashboardWidgets';
+import { PERIODS, type Period } from '../../data/insights';
 import { NavIcon } from '../../components/NavIcons';
 import { MAX_SHOWN, defaultLayout, reviveLayout, widgetDef, type DashLayout, type LayoutItem, type WidgetId } from '../../data/dashboard';
 import { USER } from '../../data/mock';
@@ -42,9 +43,11 @@ function greeting() {
 // scaled down together so they fit the window without the page scrolling.
 export function DashboardPage() {
   const navigate = useNavigate();
-  const data = useDashboardData();
   const fit = isLive('dashboard-fit');
-  const [layout, setLayout] = usePersisted<DashLayout>('runtruck-dashboard', defaultLayout(), reviveLayout);
+  // Release 1.31 replaced every widget: layouts saved before it start over.
+  const [layout, setLayout] = usePersisted<DashLayout>('runtruck-dashboard-v2', defaultLayout(), reviveLayout);
+  const data = useDashboardData(layout.options.period);
+  const setPeriod = (period: Period) => setLayout((p) => ({ ...p, options: { ...p.options, period } }));
   const [editing, setEditing] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [dragId, setDragId] = useState<WidgetId | null>(null);
@@ -260,9 +263,22 @@ export function DashboardPage() {
             <button type="button" className="ui-btn ui-btn-primary" onClick={() => setEditing(false)}>Done</button>
           </>
         ) : (
-          <button type="button" className="ui-btn dash-customize" onClick={() => setEditing(true)}>
-            <NavIcon name="settings" size={16} /> Customize
-          </button>
+          <>
+            {/* Release 1.31: the period every insight covers. */}
+            <div className="dash-period" role="radiogroup" aria-label="Period">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.key} type="button" role="radio" aria-checked={o.period === p.key}
+                  className={`dash-period-btn${o.period === p.key ? ' is-on' : ''}`} onClick={() => setPeriod(p.key)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="ui-btn dash-customize" onClick={() => setEditing(true)}>
+              <NavIcon name="settings" size={16} /> Customize
+            </button>
+          </>
         )}
       </div>
 
@@ -273,7 +289,7 @@ export function DashboardPage() {
       >
         {visible.map((it) => {
           const kpi = kpiFor(it.id, data);
-          const card = kpi ? null : cardFor(it.id, data, o);
+          const card = kpi ? null : cardFor(it.id, data);
           const title = widgetDef(it.id).title;
           const height = it.h * drawn;
           // A number widget shrunk to fit the window lays itself out tighter.
@@ -297,7 +313,10 @@ export function DashboardPage() {
                   <>
                     <div className="dash-kpi-label">{kpi.label}</div>
                     {o.notes && <div className="dash-kpi-note">{kpi.note}</div>}
-                    <div className="dash-kpi-value">{kpi.value}</div>
+                    <div className="dash-kpi-foot">
+                      {kpi.delta && <span className={`dash-kpi-delta${kpi.delta.good ? ' is-good' : ' is-bad'}`} title={kpi.delta.title}>{kpi.delta.text}</span>}
+                      <div className="dash-kpi-value">{kpi.value}</div>
+                    </div>
                   </>
                 )}
                 {card && (

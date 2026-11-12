@@ -1006,3 +1006,61 @@ a.ui-link { padding-block: 7px; margin-block: -7px; }
 .ui-topbar > .ui-island { min-height: 44px; padding: 0; background: none; border-radius: 0; box-shadow: none; }
 .ui-topbar > .ui-search-island { padding: 0 8px 0 16px; background: var(--ui-card); border-radius: 999px; box-shadow: 0 0 0 1px var(--ui-border); }
 .ui-topbar > .ui-topbar-right { padding: 0 0 0 12px; }
+
+/* — Skeleton loading (release 1.31, components/Skeleton.tsx) — */
+.sk {
+  display: block; border-radius: 6px; flex: none;
+  /* A shade of the text colour, so it shows on any surface in every theme. */
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--ui-text) 9%, transparent) 0%,
+    color-mix(in srgb, var(--ui-text) 4%, transparent) 40%,
+    color-mix(in srgb, var(--ui-text) 9%, transparent) 80%);
+  background-size: 200% 100%; animation: sk-shimmer 1.3s ease-in-out infinite;
+}
+@keyframes sk-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.sk-page { display: flex; flex-direction: column; gap: 20px; }
+.sk-stack { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sk-stack.is-gap { gap: 16px; }
+.sk-pill { width: 96px; height: 34px; border-radius: 999px; }
+.sk-pill.is-wide { width: 240px; }
+.sk-pill.is-search { width: 340px; height: 44px; }
+.sk-tabs { display: flex; gap: 6px; align-self: center; padding: 6px; background: var(--ui-card); border-radius: 999px; }
+.sk-tabs .sk-pill { width: 88px; }
+.sk-card { overflow: hidden; }
+.sk-pad { display: flex; flex-direction: column; gap: 12px; padding: 20px 24px; }
+.sk-card-head { padding: 16px 24px; }
+.sk-thead { display: flex; gap: 48px; padding: 14px 24px; background: var(--ui-thead); }
+.sk-row { display: flex; gap: 48px; align-items: center; padding: 16px 24px; border-top: 1px solid var(--ui-border); }
+.sk-grid { display: grid; gap: 20px; }
+.sk-grid.is-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.sk-grid.is-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sk-grid.is-8-4 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.sk-grid.is-settings { grid-template-columns: 220px minmax(0, 1fr); align-items: start; }
+@media (max-width: 900px) { .sk-grid.is-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sk-grid.is-8-4, .sk-grid.is-settings, .sk-grid.is-2 { grid-template-columns: minmax(0, 1fr); } }
+.sk-kpi { display: flex; flex-direction: column; gap: 10px; height: 120px; padding: 18px 20px; }
+.sk-kpi .sk:last-child { margin-top: auto; align-self: flex-end; }
+.sk-kpi.is-short { height: 90px; }
+.sk-dash { min-height: 0; }
+.sk-dash-top { display: flex; align-items: center; gap: 10px; }
+.sk-dash-top > .sk-stack, .sk-dash-top > .sk:first-child { margin-right: auto; }
+.sk-chart { display: flex; flex-direction: column; gap: 14px; height: 280px; padding: 18px 20px; }
+.sk-bars { flex: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: end; gap: 12px; }
+.sk-bars .sk { width: 100%; border-radius: 6px 6px 3px 3px; }
+.sk-block { width: 100%; height: 220px; border-radius: 12px; }
+.sk-block.is-short { height: 44px; }
+.sk-tall { min-height: 300px; }
+.sk-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; height: 560px; padding: 16px; }
+.sk-calendar .sk { height: 100%; border-radius: 10px; }
+.sk-shell .sk-sidebar { display: flex; flex-direction: column; gap: 18px; padding: 24px 20px; }
+.sk-topbar { align-items: center; }
+/* A popup on its way. */
+.sk-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; background: rgba(15, 23, 42, 0.3); backdrop-filter: blur(3px); }
+.sk-dialog { display: flex; flex-direction: column; width: min(1240px, 100%); height: min(820px, 100%); overflow: hidden; background: var(--ui-card); border-radius: 24px; box-shadow: 0 30px 80px -20px rgba(30, 40, 70, 0.35); }
+.sk-dialog-head { display: flex; align-items: center; gap: 14px; padding: 18px 24px; border-bottom: 1px solid var(--ui-border); }
+.sk-square { width: 40px; height: 40px; border-radius: 14px; }
+.sk-dialog-body { flex: 1; display: flex; min-height: 0; }
+.sk-dialog-side { display: flex; flex-direction: column; gap: 18px; width: 240px; padding: 20px; border-right: 1px solid var(--ui-border); }
+.sk-dialog-main { flex: 1; display: flex; flex-direction: column; gap: 32px; padding: 24px 28px; }
+.sk-field { height: 40px; border-radius: 12px; }
+@media (max-width: 760px) { .sk-dialog-side { display: none; } }

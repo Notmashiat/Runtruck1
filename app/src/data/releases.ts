@@ -426,6 +426,21 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.31',
+    date: '2026-11-12',
+    title: 'Dashboard insights, periods and skeleton loading',
+    changes: [
+      {
+        id: 'dash-insights', kind: 'Updated', section: 'Dashboard', title: 'New insight widgets with a YTD / One year / One month / One week choice (live for every company)',
+        details: 'Every Dashboard widget is replaced by insights: revenue, loads delivered, active trucks out of the fleet, a Total profit graph (profit through the period as a line against the period before as a dashed line, with a tooltip that follows the pointer or the arrow keys; profit is revenue less driver pay, partner-carrier pay and bills), an On-time delivery gauge against a 95% target (Show details lists the late loads), top lanes by profit and on-time delivery by customer, with a profit number, revenue per mile against cost per mile and late deliveries to add in Customize. A new choice beside Customize sets the period for all of them (Active trucks is always right now), and each number shows its change against the period before. Layouts saved before this start from the new standard layout. The demo company has two years of sample history so every period has data.',
+      },
+      {
+        id: 'skeletons', kind: 'New', section: 'Everywhere', title: 'Skeleton loading',
+        details: 'While a page or popup downloads, grey shapes in its layout (the Dashboard, lists, a load\u2019s page, the Planner, Settings, and popups) take the place of the word "Loading…". They shimmer gently, except with reduced motion.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

@@ -13,6 +13,7 @@ import { isLive } from '../lib/releases';
 import { lazyNamed } from '../lib/lazyPage';
 import { ErrorBoundary } from './ErrorBoundary';
 import { describe, FilterPanel } from './FilterPanel';
+import { DialogSkeleton } from './Skeleton';
 import { Fa } from './Fa';
 import { ThemeSwitch } from './ThemeSwitch';
 import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
@@ -287,7 +288,7 @@ export function Header() {
       </div>
       {/* A form that fails closes into a one-line notice; the top bar stays. */}
       <ErrorBoundary where="Form" variant="strip" resetKey={`${adding}${newLoadOpen}${editOpen}`} onDismiss={() => { setAdding(null); setNewLoadOpen(false); setEditOpen(false); }}>
-      <Suspense fallback={null}>
+      <Suspense fallback={<DialogSkeleton />}>
       {newLoadOpen && (
         <NewLoadDialog onClose={() => setNewLoadOpen(false)} onSaved={(id) => navigate(`/app/loads/${id}`)} />
       )}

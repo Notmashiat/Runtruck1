@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { PageSkeleton } from './Skeleton';
 import { Toaster } from './Toaster';
 import { StorageBanner, TrialBanner } from './StatusBanners';
 import { AppShellProvider } from '../context/AppShellContext';
@@ -58,7 +59,7 @@ export function AppLayout() {
           <TrialBanner />
           <main className="ui-main">
             <ErrorBoundary where="Page" resetKey={location.pathname}>
-              <Suspense fallback={<div className="ui-empty">Loading…</div>}>
+              <Suspense fallback={<PageSkeleton path={location.pathname} />}>
                 <Outlet />
               </Suspense>
             </ErrorBoundary>

@@ -1,5 +1,6 @@
 import { Suspense, type ComponentType, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { ShellSkeleton } from './components/Skeleton';
 import { TabbedSection } from './components/TabbedSection';
 import { PAYROLL_IN_HR, PAYROLL_PATH, SECTION_TABS, type ViewKey } from './data/mock';
 import { LandingPage } from './pages/marketing/LandingPage';
@@ -83,9 +84,16 @@ function section(key: ViewKey, tabs: [string, ComponentType][]) {
   );
 }
 
+// While a screen downloads: the app's frame and the page's shape for
+// anything under /app; the website pages keep their own look (no frame).
+function RouteSkeleton() {
+  const { pathname } = useLocation();
+  return pathname.toLowerCase().startsWith('/app') ? <ShellSkeleton path={pathname} /> : null;
+}
+
 export default function App() {
   return (
-    <Suspense fallback={<div className="ui-empty">Loading…</div>}>
+    <Suspense fallback={<RouteSkeleton />}>
     <Routes>
       <Route path="/" element={<LandingPage />} />
       {/* With logging in switched off (lib/account.ts), /login opens the app. */}

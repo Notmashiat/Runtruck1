@@ -170,3 +170,89 @@
   .dash-opt { flex-direction: column; align-items: stretch; }
 }
 @media (prefers-reduced-motion: reduce) { .dash-card, .dash-switch, .dash-switch span { transition: none; } }
+
+/* — Insights (release 1.31) — */
+/* The period beside Customize: YTD, One year, One month, One week. */
+.dash-period { display: inline-flex; flex: none; gap: 2px; padding: 3px; background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 999px; }
+.dash-period-btn {
+  height: 30px; padding: 0 14px; font: inherit; font-size: 13px; font-weight: 600; color: var(--ui-text-2);
+  background: transparent; border: 0; border-radius: 999px; cursor: pointer; white-space: nowrap;
+}
+.dash-period-btn:hover { color: var(--ui-text); }
+.dash-period-btn.is-on { color: var(--ui-on-primary); background: var(--ui-primary); }
+@media (pointer: coarse) { .dash-period-btn { min-height: 44px; } }
+@media (max-width: 760px) { .dash-top { flex-wrap: wrap; } .dash-period { order: 3; width: 100%; justify-content: space-between; } }
+/* A number with its change against the period before, side by side at the foot. */
+.dash-kpi-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: auto; min-width: 0; }
+.dash-kpi-foot .dash-kpi-value { margin-top: 0; margin-left: auto; }
+.dash-kpi-delta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; padding-bottom: 6px; }
+.dash-kpi-delta.is-good { color: var(--ui-green); }
+.dash-kpi-delta.is-bad { color: var(--ui-red); }
+.dash-card.is-kpi.is-tiny .dash-kpi-foot { margin-top: 0; }
+.dash-card.is-kpi.is-short .dash-kpi-delta { display: none; }
+/* On-time by customer. */
+.dash-table { width: 100%; }
+.dash-rate { display: flex; align-items: center; gap: 10px; min-width: 140px; }
+.dash-rate-track { flex: 1; height: 6px; border-radius: 999px; background: var(--ui-expand); overflow: hidden; }
+.dash-rate-track span { display: block; height: 100%; border-radius: 999px; }
+.dash-rate b { min-width: 40px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.dash-rate.is-good .dash-rate-track span { background: var(--ui-green); }
+.dash-rate.is-ok .dash-rate-track span { background: var(--ui-amber); }
+.dash-rate.is-bad .dash-rate-track span { background: var(--ui-red); }
+
+/* — The profit graph (release 1.32, DashboardCharts.tsx): the total and its
+   change on the left, this period against the one before on the right. — */
+.pchart { container-type: inline-size; display: grid; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); gap: 16px; height: 100%; min-height: 0; }
+@container (max-width: 520px) { .pchart { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); } .pchart-stat { justify-content: flex-start; } }
+.pchart-stat { display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; min-width: 0; padding-bottom: 24px; }
+.pchart-total { font-size: clamp(28px, 3vw, 40px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.pchart-delta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--ui-muted); }
+.pchart-chip { padding: 3px 8px; font-size: 12px; font-weight: 700; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.pchart-chip.is-good { color: var(--ui-green); background: var(--ui-green-soft); }
+.pchart-chip.is-bad { color: var(--ui-red); background: var(--ui-red-soft); }
+.pchart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: 12px; color: var(--ui-muted); }
+.pchart-legend i, .pchart-tip i { display: inline-block; width: 14px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--ui-primary); }
+.pchart-legend i.is-before, .pchart-tip i.is-before { border-top: 2px dashed var(--ui-muted); }
+.pchart-plot { position: relative; min-width: 0; min-height: 120px; outline: none; border-radius: 8px; }
+.pchart-plot:focus-visible { box-shadow: 0 0 0 2px var(--ui-primary); }
+.pchart-plot svg { display: block; cursor: crosshair; touch-action: pan-y; }
+.pchart-grid { stroke: var(--ui-border); stroke-dasharray: 4 4; }
+.pchart-grid.is-zero { stroke: var(--ui-dash); stroke-dasharray: none; }
+.pchart-ylabel, .pchart-xlabel { font-size: 11px; font-weight: 500; fill: var(--ui-muted); font-variant-numeric: tabular-nums; }
+.pchart-line { fill: none; stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+.pchart-line.is-now { stroke: var(--ui-primary); }
+.pchart-line.is-before { stroke: var(--ui-muted); stroke-width: 1.75; stroke-dasharray: 5 5; opacity: 0.7; }
+.pchart-cursor { stroke: var(--ui-text-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.pchart-dot.is-now { fill: var(--ui-primary); stroke: var(--ui-card); stroke-width: 2.5; }
+.pchart-dot.is-before { fill: var(--ui-card); stroke: var(--ui-muted); stroke-width: 1.5; }
+.pchart-tip {
+  position: absolute; top: 6px; z-index: 2; margin-left: 14px; padding: 10px 12px; min-width: 190px; pointer-events: none;
+  font-size: 12px; line-height: 1.6; color: var(--ui-text-2); white-space: nowrap;
+  background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 10px; box-shadow: 0 8px 24px var(--ui-shadow);
+}
+.pchart-tip.is-left { transform: translateX(calc(-100% - 28px)); }
+.pchart-tip b { color: var(--ui-text); font-variant-numeric: tabular-nums; }
+.pchart-tip-date { margin-bottom: 2px; font-weight: 600; color: var(--ui-text); }
+
+/* — The on-time gauge (release 1.32): ticks round a half circle, filled to the
+   on-time share, a mark at the target, the figure in the middle. — */
+.gauge { display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; min-height: 0; }
+.gauge-arc { flex: 1; min-height: 0; width: 100%; display: grid; }
+.gauge-arc > * { grid-area: 1 / 1; }
+.gauge svg { width: 100%; height: 100%; min-height: 0; }
+.gauge line { stroke-width: 3.6; stroke-linecap: round; }
+.gauge-off { stroke: var(--ui-border); }
+.gauge.is-good .gauge-on { stroke: var(--ui-green); }
+.gauge.is-ok .gauge-on { stroke: var(--ui-amber); }
+.gauge.is-bad .gauge-on { stroke: var(--ui-red); }
+.gauge-target { stroke: var(--ui-text-2) !important; stroke-width: 2.4 !important; }
+.gauge-center { align-self: end; justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 4px; text-align: center; }
+.gauge-value { font-size: clamp(28px, 3.2vw, 42px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.gauge-sub { font-size: 12px; color: var(--ui-muted); }
+.gauge-delta { font-size: 12px; font-weight: 600; }
+.gauge-delta.is-good { color: var(--ui-green); }
+.gauge-delta.is-bad { color: var(--ui-red); }
+.gauge-foot { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.gauge-details { display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; }
+.gauge-details-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--ui-muted); }
+.gauge-details .dash-list { overflow: auto; min-height: 0; }

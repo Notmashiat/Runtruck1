@@ -2,7 +2,7 @@ import { can } from '../lib/auth';
 import { WIDGET_NEEDS } from '../data/dashboard';
 import { useState } from 'react';
 import {
-  MAX_SHOWN, WIDGETS, defaultLayout, type ChartStyle, type CustomerPeriod, type DashLayout, type DashOptions, type Density, type WidgetGroup,
+  MAX_SHOWN, WIDGETS, defaultLayout, type DashLayout, type DashOptions, type Density, type WidgetGroup,
   type WidgetId,
 } from '../data/dashboard';
 import { isLive } from '../lib/releases';
@@ -13,10 +13,6 @@ const WIDTHS: { span: number; label: string }[] = [
   { span: 8, label: '2/3' }, { span: 9, label: '3/4' }, { span: 12, label: 'Full' },
 ];
 const GROUPS: WidgetGroup[] = ['Numbers', 'Analysis', 'Tables & lists'];
-const COLUMNS: { key: keyof DashOptions['loadColumns']; label: string }[] = [
-  { key: 'customer', label: 'Customer' }, { key: 'route', label: 'Route' }, { key: 'pickup', label: 'Pickup' },
-  { key: 'driver', label: 'Driver' }, { key: 'rate', label: 'Rate' }, { key: 'status', label: 'Status' },
-];
 
 function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
@@ -112,33 +108,6 @@ export function DashboardCustomize({ layout, onChange, onClose }: { layout: Dash
               <div className="dash-opt">
                 <div><strong>Notes under numbers</strong><span>The small line of detail in each number widget.</span></div>
                 <Switch on={o.notes} onChange={(v) => setOpt('notes', v)} label="Notes under numbers" />
-              </div>
-              <div className="dash-opt">
-                <div><strong>Revenue chart period</strong><span>How many days the revenue chart covers.</span></div>
-                <Choice options={['7', '14', '30']} value={String(o.revenueDays)} onChange={(v) => setOpt('revenueDays', Number(v) as DashOptions['revenueDays'])} />
-              </div>
-              <div className="dash-opt">
-                <div><strong>Revenue chart style</strong><span>Bars per day, or a trend line.</span></div>
-                <Choice options={['Bars', 'Line'] as ChartStyle[]} value={o.chartStyle} onChange={(v) => setOpt('chartStyle', v)} />
-              </div>
-              <div className="dash-opt">
-                <div><strong>Values on bars</strong><span>Each day’s amount above its bar (7 and 14 days).</span></div>
-                <Switch on={o.chartValues} onChange={(v) => setOpt('chartValues', v)} label="Values on bars" />
-              </div>
-              <div className="dash-opt">
-                <div><strong>Revenue by customer</strong><span>The period the customer breakdown covers.</span></div>
-                <Choice options={['This week', 'Last 30 days', 'All time'] as CustomerPeriod[]} value={o.customerPeriod} onChange={(v) => setOpt('customerPeriod', v)} />
-              </div>
-              <div className="dash-opt is-column">
-                <div><strong>Active loads columns</strong><span>Load number always shows. Drag the table’s corner to show more or fewer rows.</span></div>
-                <div className="dash-cols">
-                  {COLUMNS.map((c) => (
-                    <label key={c.key} className="ui-check">
-                      <input type="checkbox" checked={o.loadColumns[c.key]} onChange={(e) => setOpt('loadColumns', { ...o.loadColumns, [c.key]: e.target.checked })} />
-                      {c.label}
-                    </label>
-                  ))}
-                </div>
               </div>
             </div>
           )}
