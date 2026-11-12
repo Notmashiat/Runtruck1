@@ -441,6 +441,32 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.32',
+    date: '2026-11-12',
+    title: 'Popups follow the accent colour',
+    changes: [
+      {
+        id: 'popup-accent', kind: 'Updated', section: 'Everywhere', title: 'New Load, New Invoice and their popups use the accent colour (live for every company)',
+        details: 'The New Load and New Invoice popups, Dispatch to driver and the discard and delete warnings now take their buttons, highlights, progress bar and selected items from the accent colour in Settings \u203a Appearance, in light and dark mode, instead of a fixed indigo.',
+      },
+    ],
+  },
+  {
+    id: '1.33',
+    date: '2026-11-12',
+    title: 'Notifications bell and a period dropdown',
+    changes: [
+      {
+        id: 'notifications-bell', kind: 'New', section: 'Everywhere', title: 'Notifications in the top bar (live for every company)',
+        details: 'The urgent-alerts bar has left the sidebar. A bell to the right of the light / dark switch shows a red dot while something is urgent or new since it was last opened; a click opens the list below it: urgent alerts (a breakdown on a load, a delayed load, a pickup with no driver, an expired licence on a load) pinned to the top, then the last two weeks newest first: load activity, payments received, invoices falling past due and driver documents running out. Each one opens the page to deal with it.',
+      },
+      {
+        id: 'dash-period-menu', kind: 'Updated', section: 'Dashboard', title: 'The period is a dropdown',
+        details: 'YTD, One year, One month and One week are now a dropdown beside Customize instead of four buttons.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

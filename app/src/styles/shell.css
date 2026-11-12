@@ -169,28 +169,6 @@
   color: var(--ui-text-2); background: transparent; border: 0; border-radius: 8px; cursor: pointer;
 }
 .ui-collapse:hover { background: var(--ui-nav-pill); color: var(--ui-text); }
-/* The notification bar at the top of the sidebar: urgent alerts only, with a red dot when one needs attention. */
-.ui-alerts { margin: 0 0 18px; }
-.ui-alert-bar {
-  position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 9px 12px;
-  font: inherit; font-size: 12px; line-height: 1.35; text-align: left; color: var(--ui-text);
-  background: var(--ui-nav-pill); border: 1px solid var(--ui-border); border-radius: 12px; cursor: pointer;
-}
-.ui-alert-bar:hover { border-color: var(--ui-red); }
-.ui-alert-bar.is-calm { cursor: default; color: var(--ui-muted); }
-.ui-alert-bar.is-calm:hover { border-color: var(--ui-border); }
-.ui-alert-icon { flex: none; color: var(--ui-red); }
-.ui-alert-bar.is-calm .ui-alert-icon { color: var(--ui-muted); }
-.ui-alert-text { flex: 1; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ui-alert-more { flex: none; font-size: 11px; font-weight: 700; color: var(--ui-text-2); }
-.ui-alert-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--ui-red); box-shadow: 0 0 0 3px var(--ui-red-soft); }
-.ui-alert-list { margin: 6px 0 0; padding: 6px; list-style: none; background: var(--ui-nav-pill); border: 1px solid var(--ui-border); border-radius: 12px; }
-.ui-alert-list a { display: block; padding: 8px; font-size: 12px; line-height: 1.35; color: var(--ui-text); text-decoration: none; border-radius: 8px; }
-.ui-alert-list a:hover { background: var(--ui-hover); color: var(--ui-primary-hover); }
-.ui-sidebar.is-collapsed .ui-alert-bar { justify-content: center; padding: 10px 0; min-height: 40px; }
-.ui-sidebar.is-collapsed .ui-alert-text,
-.ui-sidebar.is-collapsed .ui-alert-more { display: none; }
-.ui-sidebar.is-collapsed .ui-alert-dot { position: absolute; top: 7px; right: 9px; width: 8px; height: 8px; }
 .ui-nav { display: flex; flex-direction: column; gap: 2px; }
 .ui-nav-group { padding: 18px 12px 6px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ui-text-2); }
 .ui-sidebar .ui-nav-item {
@@ -1064,3 +1042,41 @@ a.ui-link { padding-block: 7px; margin-block: -7px; }
 .sk-dialog-main { flex: 1; display: flex; flex-direction: column; gap: 32px; padding: 24px 28px; }
 .sk-field { height: 40px; border-radius: 12px; }
 @media (max-width: 760px) { .sk-dialog-side { display: none; } }
+
+/* — Notifications bell (release 1.33): right of the light/dark switch; a dot
+   while something is urgent or new; the list drops down below it. — */
+.ui-bell-wrap { position: relative; flex: none; }
+.ui-bell {
+  position: relative; display: grid; place-items: center; width: 38px; height: 38px; padding: 0;
+  font-size: 16px; color: var(--ui-text-2); background: var(--ui-expand); border: 1px solid var(--ui-border); border-radius: 999px; cursor: pointer;
+}
+.ui-bell:hover, .ui-bell.is-open { color: var(--ui-text); background: var(--ui-card); }
+@media (pointer: coarse) { .ui-bell { width: 44px; height: 44px; } }
+.ui-bell-dot { position: absolute; top: 6px; right: 7px; width: 9px; height: 9px; border-radius: 999px; background: var(--ui-red); box-shadow: 0 0 0 2px var(--ui-island-bg); }
+.ui-bell-panel {
+  position: absolute; top: calc(100% + 10px); right: -8px; z-index: 60; width: min(380px, calc(100vw - 24px));
+  display: flex; flex-direction: column; max-height: min(480px, calc(100vh - 120px));
+  background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 16px; box-shadow: 0 16px 40px var(--ui-shadow);
+  animation: ui-pop 140ms ease-out;
+}
+@keyframes ui-pop { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .ui-bell-panel, .dash-pmenu-list { animation: none; } }
+.ui-bell-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px 10px; font-size: 14px; }
+.ui-bell-count { padding: 2px 8px; font-size: 11px; font-weight: 700; color: var(--ui-red); background: var(--ui-red-soft); border-radius: 999px; }
+.ui-bell-body { overflow-y: auto; padding: 0 6px 8px; }
+.ui-bell-body ul { margin: 0; padding: 0; list-style: none; }
+.ui-bell-group { padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ui-muted); }
+.ui-bell-empty { padding: 8px 16px 18px; font-size: 13px; color: var(--ui-muted); }
+.ui-notice { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; font-size: 13px; line-height: 18px; color: var(--ui-text-2); text-decoration: none; border-radius: 10px; }
+.ui-shell a.ui-notice { color: var(--ui-text-2); }
+.ui-notice:hover { background: var(--ui-hover); }
+.ui-notice.is-new, .ui-notice.is-urgent { color: var(--ui-text); font-weight: 600; }
+.ui-shell a.ui-notice.is-new, .ui-shell a.ui-notice.is-urgent { color: var(--ui-text); }
+.ui-notice.is-urgent { background: var(--ui-red-soft); }
+.ui-notice-dot { flex: none; width: 8px; height: 8px; margin-top: 5px; border-radius: 999px; background: var(--ui-dash); }
+.ui-notice.is-urgent .ui-notice-dot { background: var(--ui-red); }
+.ui-notice.is-new .ui-notice-dot { background: var(--ui-primary); }
+.ui-notice.is-payment .ui-notice-dot { background: var(--ui-green); }
+.ui-notice.is-overdue .ui-notice-dot, .ui-notice.is-document .ui-notice-dot { background: var(--ui-amber); }
+.ui-notice-text { flex: 1; min-width: 0; }
+.ui-notice-time { flex: none; font-size: 11px; font-weight: 500; color: var(--ui-muted); white-space: nowrap; }

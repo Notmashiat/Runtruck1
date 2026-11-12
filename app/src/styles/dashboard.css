@@ -172,16 +172,25 @@
 @media (prefers-reduced-motion: reduce) { .dash-card, .dash-switch, .dash-switch span { transition: none; } }
 
 /* — Insights (release 1.31) — */
-/* The period beside Customize: YTD, One year, One month, One week. */
-.dash-period { display: inline-flex; flex: none; gap: 2px; padding: 3px; background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 999px; }
-.dash-period-btn {
-  height: 30px; padding: 0 14px; font: inherit; font-size: 13px; font-weight: 600; color: var(--ui-text-2);
-  background: transparent; border: 0; border-radius: 999px; cursor: pointer; white-space: nowrap;
+/* The period beside Customize (a dropdown from release 1.33). */
+.dash-pmenu { position: relative; flex: none; }
+.dash-pmenu-btn { gap: 8px; }
+.dash-pmenu-chev { font-size: 11px; color: var(--ui-muted); transition: transform 120ms ease; }
+.dash-pmenu-btn.is-open .dash-pmenu-chev { transform: rotate(180deg); }
+.dash-pmenu-list {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; min-width: 220px; margin: 0; padding: 6px; list-style: none;
+  background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 14px; box-shadow: 0 16px 40px var(--ui-shadow);
+  animation: ui-pop 140ms ease-out;
 }
-.dash-period-btn:hover { color: var(--ui-text); }
-.dash-period-btn.is-on { color: var(--ui-on-primary); background: var(--ui-primary); }
-@media (pointer: coarse) { .dash-period-btn { min-height: 44px; } }
-@media (max-width: 760px) { .dash-top { flex-wrap: wrap; } .dash-period { order: 3; width: 100%; justify-content: space-between; } }
+.dash-pmenu-list button {
+  display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; column-gap: 12px; width: 100%; min-height: 44px; padding: 7px 12px;
+  text-align: left; font: inherit; color: var(--ui-text); background: none; border: 0; border-radius: 10px; cursor: pointer;
+}
+.dash-pmenu-list button > span { font-size: 14px; font-weight: 600; }
+.dash-pmenu-list button > small { grid-column: 1; font-size: 12px; color: var(--ui-muted); }
+.dash-pmenu-list button:hover, .dash-pmenu-list button:focus-visible { background: var(--ui-hover); outline: none; }
+.dash-pmenu-list button.is-on > span { color: var(--ui-primary-hover); }
+.dash-pmenu-check { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--ui-primary); font-size: 13px; }
 /* A number with its change against the period before, side by side at the foot. */
 .dash-kpi-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: auto; min-width: 0; }
 .dash-kpi-foot .dash-kpi-value { margin-top: 0; margin-left: auto; }

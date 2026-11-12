@@ -4,7 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { useNavigate } from 'react-router-dom';
 import { DashboardCustomize } from '../../components/DashboardCustomize';
 import { cardFor, kpiFor, useDashboardData } from '../../components/DashboardWidgets';
-import { PERIODS, type Period } from '../../data/insights';
+import type { Period } from '../../data/insights';
+import { PeriodMenu } from '../../components/PeriodMenu';
 import { NavIcon } from '../../components/NavIcons';
 import { MAX_SHOWN, defaultLayout, reviveLayout, widgetDef, type DashLayout, type LayoutItem, type WidgetId } from '../../data/dashboard';
 import { USER } from '../../data/mock';
@@ -264,17 +265,8 @@ export function DashboardPage() {
           </>
         ) : (
           <>
-            {/* Release 1.31: the period every insight covers. */}
-            <div className="dash-period" role="radiogroup" aria-label="Period">
-              {PERIODS.map((p) => (
-                <button
-                  key={p.key} type="button" role="radio" aria-checked={o.period === p.key}
-                  className={`dash-period-btn${o.period === p.key ? ' is-on' : ''}`} onClick={() => setPeriod(p.key)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            {/* The period every insight covers (release 1.31; a dropdown from 1.33). */}
+            <PeriodMenu value={o.period} onChange={setPeriod} />
             <button type="button" className="ui-btn dash-customize" onClick={() => setEditing(true)}>
               <NavIcon name="settings" size={16} /> Customize
             </button>

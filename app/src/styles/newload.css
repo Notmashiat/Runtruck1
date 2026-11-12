@@ -4,8 +4,13 @@
    else in the app is touched. Breakpoints are Tailwind's: 640, 768, 1024, 1280. */
 
 .nl, .nl-dp, .nl-toast {
-  --nl-a50: #f1f3fd; --nl-a100: #e4e8fb; --nl-a200: #cbd2f6; --nl-a300: #aab5ef; --nl-a400: #8d9be6;
-  --nl-a500: #6e7fdb; --nl-a600: #5b6bcb; --nl-a700: #4a57ac;
+  /* The accent shades follow the app's accent colour (Settings › Appearance;
+     release 1.32): lighter tints of it for fills and rings, the colour itself
+     for buttons, its darker hover shade for accent text. */
+  --nl-a50: color-mix(in srgb, var(--ui-primary) 7%, #fff); --nl-a100: color-mix(in srgb, var(--ui-primary) 14%, #fff);
+  --nl-a200: color-mix(in srgb, var(--ui-primary) 28%, #fff); --nl-a300: color-mix(in srgb, var(--ui-primary) 45%, #fff);
+  --nl-a400: color-mix(in srgb, var(--ui-primary) 70%, #fff);
+  --nl-a500: var(--ui-primary); --nl-a600: var(--ui-primary); --nl-a700: var(--ui-primary-hover);
   --nl-ink: #2a3242; --nl-mute: #636c80; --nl-line: #e5e8ee; --nl-canvas: #f5f6f9;
   --nl-sage50: #edf6f1; --nl-sage100: #d9eee2; --nl-sage500: #5fa584; --nl-sage600: #3f7d5f;
   --nl-sand50: #fcf5ea; --nl-sand500: #d49a4a; --nl-sand700: #8a5a1c;
@@ -15,7 +20,7 @@
   --nl-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --nl-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   --nl-surface: #fff; --nl-field: #fafbfc; --nl-soft: rgba(245, 246, 249, 0.7); --nl-hover: rgba(255, 255, 255, 0.7); --nl-glass: rgba(255, 255, 255, 0.95);
-  --nl-drop-bg: rgba(241, 243, 253, 0.6); --nl-blush-bg: #fdf0f0; --nl-mark: #fef9c3; --nl-a-hover: #4a57ac; --nl-red-hover: #b91c1c;
+  --nl-drop-bg: color-mix(in srgb, var(--ui-primary) 5%, transparent); --nl-blush-bg: #fdf0f0; --nl-mark: #fef9c3; --nl-a-hover: var(--ui-primary-hover); --nl-red-hover: #b91c1c;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif; font-size: 16px; line-height: 1.5; color: var(--nl-ink);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
 }
@@ -23,8 +28,10 @@
    the app's dark surfaces. The invoice preview's paper stays white. */
 :root[data-theme="dark"] :is(.nl, .nl-dp, .nl-toast) {
   color-scheme: dark;
-  --nl-a50: #1e2542; --nl-a100: #262f55; --nl-a200: #36427a; --nl-a300: #4d5aa3; --nl-a400: #7383e0;
-  --nl-a500: #8494ea; --nl-a600: #6e7fdb; --nl-a700: #b3bdf3;
+  --nl-a50: color-mix(in srgb, var(--ui-primary) 12%, #111); --nl-a100: color-mix(in srgb, var(--ui-primary) 22%, #111);
+  --nl-a200: color-mix(in srgb, var(--ui-primary) 38%, #111); --nl-a300: color-mix(in srgb, var(--ui-primary) 58%, #111);
+  --nl-a400: color-mix(in srgb, var(--ui-primary) 80%, #111);
+  --nl-a500: var(--ui-primary); --nl-a600: var(--ui-primary); --nl-a700: var(--ui-primary-hover);
   --nl-ink: #f4f4f5; --nl-mute: #9a9aa2; --nl-line: #262626; --nl-canvas: #0b0b0b;
   --nl-sage50: #12301d; --nl-sage100: #173a28; --nl-sage500: #5ccb86; --nl-sage600: #7ad9a3;
   --nl-sand50: #3a2b12; --nl-sand500: #f2b45c; --nl-sand700: #f5c983;
@@ -34,7 +41,7 @@
   --nl-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   --nl-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
   --nl-surface: #111111; --nl-field: #0b0b0b; --nl-soft: #0d0d0d; --nl-hover: rgba(255, 255, 255, 0.05); --nl-glass: rgba(17, 17, 17, 0.95);
-  --nl-drop-bg: rgba(110, 127, 219, 0.08); --nl-blush-bg: #2e1719; --nl-mark: #5a4a12; --nl-a-hover: #8494ea; --nl-red-hover: #c53030;
+  --nl-drop-bg: color-mix(in srgb, var(--ui-primary) 8%, transparent); --nl-blush-bg: #2e1719; --nl-mark: #5a4a12; --nl-a-hover: var(--ui-primary-hover); --nl-red-hover: #c53030;
 }
 :root[data-theme="dark"][data-dark="classic"] :is(.nl, .nl-dp, .nl-toast) {
   --nl-ink: #e6e9ef; --nl-mute: #9aa3b4; --nl-line: #2b3546; --nl-canvas: #111823;
@@ -317,7 +324,7 @@ select.nl-inp { appearance: none; -webkit-appearance: none; padding-right: 36px;
 .nl-drop-title { font-size: 15px; font-weight: 500; }
 .nl-drop-sub { margin-top: 4px; font-size: 13px; color: var(--nl-mute); }
 .nl-drop-btns { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; }
-.nl-browse { display: inline-flex; height: 40px; align-items: center; gap: 8px; padding: 0 16px; border-radius: 12px; background: var(--nl-a600); font-size: 13px; font-weight: 500; color: #fff; cursor: pointer; transition: background 150ms; }
+.nl-browse { display: inline-flex; height: 40px; align-items: center; gap: 8px; padding: 0 16px; border-radius: 12px; background: var(--nl-a600); font-size: 13px; font-weight: 500; color: var(--ui-on-primary); cursor: pointer; transition: background 150ms; }
 .nl-browse:hover { background: var(--nl-a-hover); }
 .nl-browse.is-sm { height: 36px; padding: 0 14px; }
 .nl-browse .fa-svg { font-size: 12px; }
@@ -430,7 +437,7 @@ select.nl-inp { appearance: none; -webkit-appearance: none; padding-right: 36px;
 .nl-btn-white:hover { border-color: var(--nl-a200); }
 .nl-btn-danger-line { height: 40px; padding: 0 16px; border: 1px solid var(--nl-line); border-radius: 12px; background: var(--nl-surface); font-size: 14px; font-weight: 500; color: var(--nl-red700); }
 .nl-btn-danger-line:hover { border-color: var(--nl-red200); }
-.nl-btn-main { display: flex; height: 40px; min-width: 140px; align-items: center; justify-content: center; gap: 8px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--nl-a600); font-size: 14px; font-weight: 600; color: #fff; box-shadow: 0 1px 2px 0 var(--nl-a200); transition: background 150ms; }
+.nl-btn-main { display: flex; height: 40px; min-width: 140px; align-items: center; justify-content: center; gap: 8px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--nl-a600); font-size: 14px; font-weight: 600; color: var(--ui-on-primary); box-shadow: 0 1px 2px 0 var(--nl-a200); transition: background 150ms; }
 .nl-btn-main:hover { background: var(--nl-a-hover); }
 .nl-btn-main:disabled { cursor: wait; opacity: 0.7; }
 .nl-btn-main .fa-svg { font-size: 12px; }

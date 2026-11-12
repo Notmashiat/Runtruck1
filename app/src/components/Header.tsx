@@ -16,6 +16,7 @@ import { describe, FilterPanel } from './FilterPanel';
 import { DialogSkeleton } from './Skeleton';
 import { Fa } from './Fa';
 import { ThemeSwitch } from './ThemeSwitch';
+import { NotificationBell } from './NotificationBell';
 import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 
 // The forms the top bar opens. Each is downloaded when it is first needed
@@ -275,6 +276,7 @@ export function Header() {
           <span>{formatNow(now, { hour: 'numeric', minute: '2-digit' })}</span>
         </time>
         <ThemeSwitch />
+        <NotificationBell />
         {showFilters && (
           <button className={`ui-btn ui-filters-btn${activeFilters.length ? ' is-on' : ''}`} type="button" onClick={() => setFiltersOpen(true)} aria-haspopup="dialog">
             Filters{activeFilters.length > 0 && <span className="ui-filters-count">{activeFilters.length}</span>}
