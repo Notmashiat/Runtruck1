@@ -542,6 +542,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.39',
+    date: '2026-11-12',
+    title: 'Loads: number widgets around the pipeline',
+    changes: [
+      {
+        id: 'loads-widgets', kind: 'New', section: 'Loads', title: 'Widgets around the load pipeline (live for every company)',
+        details: 'Four number widgets in the Dashboard’s style now sit around the pipeline bar on Loads: Undispatched and Needs POD on either side, In transit and Delivered under it, with the bar set into a notch at the top. Each counts up when the page opens, and clicking one opens its stage (Booked, En route or Delivered). On a narrower window the bar goes on top and the widgets sit two by two.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

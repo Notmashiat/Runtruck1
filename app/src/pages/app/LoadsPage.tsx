@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
+import { CountUp } from '../../components/CountUp';
 import { DriverName } from '../../components/DriverCard';
 import { PipelineMove } from '../../components/LoadDialogs';
 import { NewLoadDialog } from '../../components/NewLoadDialog';
@@ -70,14 +71,28 @@ export function LoadsPage() {
   const [editing, setEditing] = useState<Load | null>(null);
 
   const countOf = (status: string) => String(loads.filter((l) => l.status === status).length);
-  const kpis = [
+  // Each figure opens the pipeline stage its loads are in (release 1.39).
+  const kpis: { label: string; value: string; note: string; stage: LoadStage }[] = [
     moves
-      ? { label: 'Undispatched', value: String(loads.filter((l) => l.status === 'Needs driver' || l.status === 'Booked').length), note: `${countOf('Needs driver')} without a driver yet` }
-      : { label: 'Undispatched', value: countOf('Needs driver'), note: 'No driver assigned yet' },
-    { label: 'In transit', value: countOf('In transit'), note: `Loaded and rolling · ${countOf('At pickup')} at pickup` },
-    { label: 'Delivered', value: countOf('Delivered'), note: 'Delivered with POD' },
-    { label: 'Needs POD', value: countOf('Needs POD'), note: 'Delivered, proof of delivery not in' },
+      ? { label: 'Undispatched', value: String(loads.filter((l) => l.status === 'Needs driver' || l.status === 'Booked').length), note: `${countOf('Needs driver')} without a driver yet`, stage: 'Booked' }
+      : { label: 'Undispatched', value: countOf('Needs driver'), note: 'No driver assigned yet', stage: 'Booked' },
+    { label: 'In transit', value: countOf('In transit'), note: `Loaded and rolling · ${countOf('At pickup')} at pickup`, stage: 'En route' },
+    { label: 'Delivered', value: countOf('Delivered'), note: 'Delivered with POD', stage: 'Delivered' },
+    { label: 'Needs POD', value: countOf('Needs POD'), note: 'Delivered, proof of delivery not in', stage: 'Delivered' },
   ];
+  const goStage = (s: LoadStage) => { setParams({ stage: stageSlug(s) }); setQuery(''); setOpenId(firstId(byStage.get(s) ?? [])); };
+  // A number widget in the Dashboard's style.
+  const widget = (k: (typeof kpis)[number], place: string) => (
+    <section
+      key={k.label} className={`dash-card is-kpi lp-w ${place}`} role="link" tabIndex={0}
+      aria-label={`${k.label}: ${k.value}. ${k.note}. Open ${k.stage}.`}
+      onClick={() => goStage(k.stage)} onKeyDown={(e) => { if (e.key === 'Enter') goStage(k.stage); }}
+    >
+      <div className="dash-kpi-label">{k.label}</div>
+      <div className="dash-kpi-note">{k.note}</div>
+      <div className="dash-kpi-value"><CountUp text={k.value} /></div>
+    </section>
+  );
 
   const countText = searching ? `${rows.length} matching “${query}”` : `${rows.length} load${rows.length === 1 ? '' : 's'}`;
   // Release 1.20: the list on a pipeline stage is headed by the stage ("Booked Loads"), centred.
@@ -109,7 +124,7 @@ export function LoadsPage() {
             type="button"
             className={`ui-tab ui-tab-btn${on ? ' is-active' : ''}`}
             aria-current={on ? 'page' : undefined}
-            onClick={() => { setParams({ stage: stageSlug(s) }); setQuery(''); setOpenId(firstId(byStage.get(s) ?? [])); }}
+            onClick={() => goStage(s)}
           >
             {s}
           </button>
@@ -120,8 +135,23 @@ export function LoadsPage() {
 
   return (
     <>
-      {pipeline && stages}
-      <Kpis items={kpis} />
+      {pipeline ? (
+        // Release 1.39: the pipeline sits in a notch at the top of four
+        // number widgets — one each side, two under it.
+        <div className="lp-wrap">
+          <div className="lp-top">
+            {widget(kpis[0], 'is-a')}
+            <div className="lp-mid">
+              {stages}
+              {widget(kpis[1], 'is-b')}
+              {widget(kpis[2], 'is-c')}
+            </div>
+            {widget(kpis[3], 'is-d')}
+          </div>
+        </div>
+      ) : (
+        <Kpis items={kpis} />
+      )}
 
       <Card flush title={listTitle} className={stageTitle ? 'is-title-center' : ''} action={pipeline ? undefined : filter}>
         <table className="ui-table">
