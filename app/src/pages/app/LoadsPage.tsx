@@ -76,15 +76,16 @@ export function LoadsPage() {
     moves
       ? { label: 'Undispatched', value: String(loads.filter((l) => l.status === 'Needs driver' || l.status === 'Booked').length), note: `${countOf('Needs driver')} without a driver yet`, stage: 'Booked' }
       : { label: 'Undispatched', value: countOf('Needs driver'), note: 'No driver assigned yet', stage: 'Booked' },
+    { label: 'Dispatched', value: countOf('Dispatched'), note: 'Driver assigned, not loaded yet', stage: 'Dispatched' },
     { label: 'In transit', value: countOf('In transit'), note: `Loaded and rolling · ${countOf('At pickup')} at pickup`, stage: 'En route' },
     { label: 'Delivered', value: countOf('Delivered'), note: 'Delivered with POD', stage: 'Delivered' },
     { label: 'Needs POD', value: countOf('Needs POD'), note: 'Delivered, proof of delivery not in', stage: 'Delivered' },
   ];
   const goStage = (s: LoadStage) => { setParams({ stage: stageSlug(s) }); setQuery(''); setOpenId(firstId(byStage.get(s) ?? [])); };
   // A number widget in the Dashboard's style.
-  const widget = (k: (typeof kpis)[number], place: string) => (
+  const widget = (k: (typeof kpis)[number]) => (
     <section
-      key={k.label} className={`dash-card is-kpi lp-w ${place}`} role="link" tabIndex={0}
+      key={k.label} className="dash-card is-kpi lp-w" role="link" tabIndex={0}
       aria-label={`${k.label}: ${k.value}. ${k.note}. Open ${k.stage}.`}
       onClick={() => goStage(k.stage)} onKeyDown={(e) => { if (e.key === 'Enter') goStage(k.stage); }}
     >
@@ -133,141 +134,146 @@ export function LoadsPage() {
     </nav>
   );
 
-  return (
-    <>
-      {pipeline ? (
-        // Release 1.39: the pipeline sits in a notch at the top of four
-        // number widgets — one each side, two under it.
-        <div className="lp-wrap">
-          <div className="lp-top">
-            {widget(kpis[0], 'is-a')}
-            <div className="lp-mid">
-              {stages}
-              {widget(kpis[1], 'is-b')}
-              {widget(kpis[2], 'is-c')}
-            </div>
-            {widget(kpis[3], 'is-d')}
-          </div>
-        </div>
-      ) : (
-        <Kpis items={kpis} />
-      )}
+  const list = (
+    // Release 1.40: with the pipeline, the list has no heading; its top
+    // reaches up to the middle of the pipeline bar, curves round it, and
+    // holds the number widgets.
+    <Card flush title={pipeline ? undefined : listTitle} className={pipeline ? 'lp-card' : stageTitle ? 'is-title-center' : ''} action={pipeline ? undefined : filter}>
+      {pipeline && <div className="lp-widgets">{kpis.map(widget)}</div>}
+      <table className="ui-table">
+        <thead>
+          <tr>
+            <SortTh sort={sort} k="id">Load #</SortTh><SortTh sort={sort} k="ref">Tender #</SortTh><SortTh sort={sort} k="unit">Truck</SortTh><SortTh sort={sort} k="route">Route</SortTh><SortTh sort={sort} k="pickup">Pickup</SortTh><SortTh sort={sort} k="driver">Driver</SortTh>
+            <SortTh sort={sort} k="rate" num>Rate</SortTh><SortTh sort={sort} k="status" num>Status</SortTh>
+          </tr>
+        </thead>
+        <tbody>
+          {paged.rows.map((l) => {
+            const open = openId === l.id;
+            const unassigned = l.unit === '—';
+            const stops = stopsOf(l);
+            return (
+              <Fragment key={l.id}>
+                <tr className={`is-clickable${open ? ' is-open' : ''}`} onClick={() => setOpenId(open ? null : l.id)}>
+                  <td className="strong">{l.id}</td>
+                  <td className="strong">{l.ref}</td>
+                  <td className={unassigned ? 'muted' : ''}>{unassigned ? 'Unassigned' : l.unit}</td>
+                  <td>{l.route}</td>
+                  <td>{l.pickup}</td>
+                  <td><DriverName name={l.driver} /></td>
+                  <td className="num">{l.rate}</td>
+                  <td className="num"><Tag label={l.status} tagClass={l.tagClass} /></td>
+                </tr>
+                {open && (
+                  <tr>
+                    <td colSpan={8} className="ui-expand-cell">
+                      <div className="ui-expand">
+                        <div>
+                          <div className="ui-label">Stops ({stops.length})</div>
+                          {stops.map((s, i) => (
+                            <div key={i} className="ui-stop">
+                              <div className={`ui-stop-kind ${s.kind === 'Pickup' ? 'pickup' : 'delivery'}`}>{s.kind} · Stop {i + 1}</div>
+                              <div className="ui-stop-name">{s.name}</div>
+                              <div className="ui-stop-meta">{s.address}</div>
+                              <div className="ui-stop-meta">{s.when}</div>
+                            </div>
+                          ))}
+                        </div>
 
-      <Card flush title={listTitle} className={stageTitle ? 'is-title-center' : ''} action={pipeline ? undefined : filter}>
-        <table className="ui-table">
-          <thead>
-            <tr>
-              <SortTh sort={sort} k="id">Load #</SortTh><SortTh sort={sort} k="ref">Tender #</SortTh><SortTh sort={sort} k="unit">Truck</SortTh><SortTh sort={sort} k="route">Route</SortTh><SortTh sort={sort} k="pickup">Pickup</SortTh><SortTh sort={sort} k="driver">Driver</SortTh>
-              <SortTh sort={sort} k="rate" num>Rate</SortTh><SortTh sort={sort} k="status" num>Status</SortTh>
-            </tr>
-          </thead>
-          <tbody>
-            {paged.rows.map((l) => {
-              const open = openId === l.id;
-              const unassigned = l.unit === '—';
-              const stops = stopsOf(l);
-              return (
-                <Fragment key={l.id}>
-                  <tr className={`is-clickable${open ? ' is-open' : ''}`} onClick={() => setOpenId(open ? null : l.id)}>
-                    <td className="strong">{l.id}</td>
-                    <td className="strong">{l.ref}</td>
-                    <td className={unassigned ? 'muted' : ''}>{unassigned ? 'Unassigned' : l.unit}</td>
-                    <td>{l.route}</td>
-                    <td>{l.pickup}</td>
-                    <td><DriverName name={l.driver} /></td>
-                    <td className="num">{l.rate}</td>
-                    <td className="num"><Tag label={l.status} tagClass={l.tagClass} /></td>
-                  </tr>
-                  {open && (
-                    <tr>
-                      <td colSpan={8} className="ui-expand-cell">
-                        <div className="ui-expand">
-                          <div>
-                            <div className="ui-label">Stops ({stops.length})</div>
-                            {stops.map((s, i) => (
-                              <div key={i} className="ui-stop">
-                                <div className={`ui-stop-kind ${s.kind === 'Pickup' ? 'pickup' : 'delivery'}`}>{s.kind} · Stop {i + 1}</div>
-                                <div className="ui-stop-name">{s.name}</div>
-                                <div className="ui-stop-meta">{s.address}</div>
-                                <div className="ui-stop-meta">{s.when}</div>
+                        <div>
+                          <div className="ui-label">Load details</div>
+                          <div className="ui-kv">
+                            {[
+                              ['System load #', l.id],
+                              ['Tender #', l.ref],
+                              ['Commodity', l.commodity],
+                              ['Weight', l.weight],
+                              ['Equipment', l.equip],
+                              ['Rate', l.rate],
+                            ].map(([k, v]) => (
+                              <div key={k}>
+                                <div className="ui-label">{k}</div>
+                                <div className="ui-kv-value">{v}</div>
                               </div>
                             ))}
                           </div>
+                        </div>
 
-                          <div>
-                            <div className="ui-label">Load details</div>
-                            <div className="ui-kv">
-                              {[
-                                ['System load #', l.id],
-                                ['Tender #', l.ref],
-                                ['Commodity', l.commodity],
-                                ['Weight', l.weight],
-                                ['Equipment', l.equip],
-                                ['Rate', l.rate],
-                              ].map(([k, v]) => (
-                                <div key={k}>
-                                  <div className="ui-label">{k}</div>
-                                  <div className="ui-kv-value">{v}</div>
-                                </div>
-                              ))}
+                        <div>
+                          <div className="ui-label">Customer</div>
+                          <div className="ui-kv">
+                            <div>
+                              <div className="ui-kv-value">{l.customer}</div>
+                              <div className="ui-stop-meta">{l.temp} · {l.equip}</div>
+                            </div>
+                            <div className="ui-link-stack">
+                              <Link className="ui-link" to={`/app/loads/${l.id}`}>Open load →</Link>
+                              <button type="button" className="ui-link" onClick={(e) => { e.stopPropagation(); setEditing(l); }}>
+                                Edit load
+                              </button>
+                            </div>
+                            {moves && <PipelineMove load={l} />}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="ui-label">Truck &amp; driver</div>
+                          <div className="ui-kv">
+                            <div>
+                              <div className="ui-label">Truck</div>
+                              <div className="ui-kv-value">{unassigned ? 'Unassigned' : l.unit}</div>
+                            </div>
+                            <div>
+                              <div className="ui-label">Driver</div>
+                              <div className="ui-kv-value"><DriverName name={l.driver} /></div>
                             </div>
                           </div>
-
-                          <div>
-                            <div className="ui-label">Customer</div>
-                            <div className="ui-kv">
-                              <div>
-                                <div className="ui-kv-value">{l.customer}</div>
-                                <div className="ui-stop-meta">{l.temp} · {l.equip}</div>
-                              </div>
-                              <div className="ui-link-stack">
-                                <Link className="ui-link" to={`/app/loads/${l.id}`}>Open load →</Link>
-                                <button type="button" className="ui-link" onClick={(e) => { e.stopPropagation(); setEditing(l); }}>
-                                  Edit load
-                                </button>
-                              </div>
-                              {moves && <PipelineMove load={l} />}
+                          <div className="ui-label" style={{ marginTop: 22 }}>Carrier</div>
+                          <div className="ui-kv">
+                            <div>
+                              <div className="ui-label">Name</div>
+                              <div className="ui-kv-value">{l.carrier}</div>
                             </div>
-                          </div>
-
-                          <div>
-                            <div className="ui-label">Truck &amp; driver</div>
-                            <div className="ui-kv">
-                              <div>
-                                <div className="ui-label">Truck</div>
-                                <div className="ui-kv-value">{unassigned ? 'Unassigned' : l.unit}</div>
-                              </div>
-                              <div>
-                                <div className="ui-label">Driver</div>
-                                <div className="ui-kv-value"><DriverName name={l.driver} /></div>
-                              </div>
-                            </div>
-                            <div className="ui-label" style={{ marginTop: 22 }}>Carrier</div>
-                            <div className="ui-kv">
-                              <div>
-                                <div className="ui-label">Name</div>
-                                <div className="ui-kv-value">{l.carrier}</div>
-                              </div>
-                              <div>
-                                <div className="ui-label">MC · DOT</div>
-                                <div className="ui-kv-value">{l.carrierMc} · {l.carrierDot}</div>
-                              </div>
+                            <div>
+                              <div className="ui-label">MC · DOT</div>
+                              <div className="ui-kv-value">{l.carrierMc} · {l.carrierDot}</div>
                             </div>
                           </div>
                         </div>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-        {paged.pager}
-        {rows.length === 0 && (
-          <div className="ui-empty">{base.length ? 'Nothing matches the search or filters.' : searching ? `Nothing matches “${query}”.` : 'No loads in this view.'}</div>
-        )}
-      </Card>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+      {paged.pager}
+      {rows.length === 0 && (
+        <div className="ui-empty">{base.length ? 'Nothing matches the search or filters.' : searching ? `Nothing matches “${query}”.` : 'No loads in this view.'}</div>
+      )}
+    </Card>
+  );
+
+  return (
+    <>
+      {pipeline ? (
+        // Release 1.39: number widgets with the pipeline. Release 1.40: they
+        // sit in the top of the list, which curves round the pipeline bar.
+        <div className="lp-wrap">
+          <div className="lp-group">
+            {stages}
+            {list}
+          </div>
+        </div>
+      ) : (
+        <>
+          <Kpis items={kpis} />
+          {list}
+        </>
+      )}
+
 
       {editing && (
         <NewLoadDialog load={editing} onClose={() => setEditing(null)} onDeleted={() => setEditing(null)} />

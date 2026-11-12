@@ -298,29 +298,28 @@
 .dash-row.is-two-line .dash-row-meta { grid-area: meta; overflow: hidden; text-overflow: ellipsis; }
 .count-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-/* — Loads: number widgets around the pipeline (release 1.39). The pipeline
-   sits in a notch at the top of the two middle widgets: a ring in the page's
-   colour cuts it out of them. Narrow, the pipeline goes on top and the
-   widgets sit two by two (smaller, without their notes, on a phone). — */
-.lp-wrap { container-type: inline-size; }
-.lp-top { --lp-pipe: 50px; --lp-moat: 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 14px; align-items: stretch; }
-.lp-mid { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: var(--lp-pipe) auto; gap: 0 14px; }
-.lp-mid > .ui-tabs { position: relative; z-index: 1; grid-column: 1 / -1; grid-row: 1; justify-self: center; align-self: start; margin: 0 56px; box-shadow: 0 0 0 var(--lp-moat) var(--ui-bg); flex-wrap: nowrap; }
-.lp-mid > .is-b { grid-column: 1; }
-.lp-mid > .is-c { grid-column: 2; }
-.lp-mid > .lp-w { grid-row: 1 / 3; padding-top: calc(var(--lp-pipe) + var(--lp-moat) + 12px); }
-.lp-w { min-height: 150px; }
-.lp-w .dash-kpi-value { font-size: clamp(26px, 2.6vw, 36px); }
-@container (max-width: 1060px) {
-  .lp-top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lp-mid { display: contents; }
-  .lp-mid > .ui-tabs { order: -1; grid-column: 1 / -1; grid-row: auto; margin: 0 0 4px; box-shadow: none; flex-wrap: wrap; }
-  .lp-mid > .lp-w, .lp-mid > .is-b, .lp-mid > .is-c { grid-column: auto; grid-row: auto; padding-top: 18px; }
-  .lp-w { min-height: 120px; }
+/* — Loads (release 1.40): the loads list reaches up to the middle of the
+   pipeline bar, and a ring in the page's colour round the bar curves the
+   list's edge around it. The number widgets sit in the top of the list, in
+   one row, all the same size. Narrow, the bar sits above the list and the
+   widgets scroll sideways. — */
+.lp-wrap { container-type: inline-size; --lp-pipe: 50px; --lp-moat: 10px; }
+.lp-group { position: relative; margin-top: calc(var(--lp-pipe) / 2); }
+.lp-group > .ui-tabs {
+  position: absolute; z-index: 1; top: calc(var(--lp-pipe) / -2); left: 50%; transform: translateX(-50%);
+  height: var(--lp-pipe); flex-wrap: nowrap; white-space: nowrap; box-shadow: 0 0 0 var(--lp-moat) var(--ui-bg);
 }
-@container (max-width: 520px) {
-  .lp-top { gap: 10px; }
-  .lp-top .lp-w { min-height: 0; padding: 12px 14px; }
+.lp-card { margin: 0; }
+.lp-widgets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; padding: calc(var(--lp-pipe) / 2 + var(--lp-moat) + 14px) 24px 18px; }
+.lp-widgets .lp-w { min-height: 112px; padding: 16px 18px; background: var(--ui-thead); }
+.lp-w .dash-kpi-value { font-size: clamp(24px, 2.4vw, 34px); }
+@container (max-width: 760px) {
+  .lp-group { margin-top: 0; display: flex; flex-direction: column; gap: 14px; }
+  .lp-group > .ui-tabs { position: static; transform: none; height: auto; align-self: center; flex-wrap: wrap; white-space: normal; box-shadow: none; }
+  .lp-widgets { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(140px, 1fr); overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; scrollbar-width: none; padding: 16px; }
+  .lp-widgets::-webkit-scrollbar { display: none; }
+  .lp-widgets > .lp-w { scroll-snap-align: start; }
+  .lp-widgets .lp-w { min-height: 0; padding: 12px 14px; }
   .lp-w .dash-kpi-label { font-size: 13px; }
   .lp-w .dash-kpi-note { display: none; }
   .lp-w .dash-kpi-value { margin-top: 10px; font-size: 26px; }

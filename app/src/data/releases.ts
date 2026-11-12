@@ -553,6 +553,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.40',
+    date: '2026-11-12',
+    title: 'Loads: the widgets inside the list',
+    changes: [
+      {
+        id: 'loads-island', kind: 'Updated', section: 'Loads', title: 'Widgets inside the loads list (live for every company)',
+        details: 'The loads list no longer has a heading ("Booked Loads"). Instead its top reaches up to the middle of the pipeline bar and curves round it, and the number widgets sit in that top part, in one row, all the same size — the list keeps its full width. A new Dispatched widget (driver assigned, not loaded yet) joins them, so they follow the pipeline: Undispatched, Dispatched, In transit, Delivered, Needs POD. On a phone the bar sits above the list and the widgets scroll sideways.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
