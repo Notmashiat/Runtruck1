@@ -415,6 +415,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.30',
+    date: '2026-11-11',
+    title: 'Sidebar in the island tone',
+    changes: [
+      {
+        id: 'sidebar-island-tone', kind: 'Updated', section: 'Everywhere', title: 'The sidebar matches the top bar island, and Dashboard widgets stay inside theirs (live for every company)',
+        details: 'The sidebar has the same tone as the top bar and Dashboard islands; in light mode hovering a menu item or the open page shows it as a white pill, like the search. On the Dashboard, the widgets at the bottom are measured again whenever the greeting above them changes height (for example when the date line rewraps or the font loads), so they can no longer hang below the island or make the page scroll.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

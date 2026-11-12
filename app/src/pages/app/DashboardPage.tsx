@@ -187,7 +187,9 @@ export function DashboardPage() {
       if (fillDown) {
         // Positions on screen are scaled by the text size; heights are not.
         const ratio = main.getBoundingClientRect().height / main.offsetHeight || 1;
-        const bottom = main.getBoundingClientRect().top + (main.clientHeight - spaceBelow(grid, main)) * ratio;
+        // 1 px short of the island's inner edge, so rounding can never push a
+        // widget over it.
+        const bottom = main.getBoundingClientRect().top + (main.clientHeight - spaceBelow(grid, main) - 1) * ratio;
         const hOf = new Map(heights.split(',').map((x) => { const [id, h] = x.split(':'); return [id, Number(h)] as const; }));
         const items = [...grid.querySelectorAll<HTMLElement>('[data-widget]')].map((el) => ({ id: el.dataset.widget ?? '', r: el.getBoundingClientRect() }));
         // Where each widget ends at its set height. Not the box on screen: that
@@ -206,11 +208,22 @@ export function DashboardPage() {
       grid.closest('.dash-island')?.classList.toggle('is-filled', windowFull);
       setStretch((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
     };
-    // Runs once when it starts watching, then whenever the window or grid changes size.
+    // Runs once when it starts watching, then whenever anything that moves the
+    // widgets changes size: the window, the grid, the island, and the greeting
+    // above the grid (its date line can rewrap as the clock ticks, or when the
+    // font arrives, and that moves every widget down without resizing the grid).
     const ro = new ResizeObserver(compute);
     ro.observe(main);
     ro.observe(grid);
-    return () => ro.disconnect();
+    const island = grid.closest('.dash-island');
+    if (island) ro.observe(island);
+    if (grid.previousElementSibling) ro.observe(grid.previousElementSibling);
+    let alive = true;
+    void document.fonts?.ready.then(() => { if (alive) compute(); });
+    return () => {
+      alive = false;
+      ro.disconnect();
+    };
   }, [fillDown, heights, cols, drawn]);
   // A layout saved with more widgets than the dashboard holds keeps the first ones.
   const extra = fit ? shown.slice(MAX_SHOWN).map((i) => i.id).join() : '';
