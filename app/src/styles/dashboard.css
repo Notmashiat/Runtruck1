@@ -1,5 +1,13 @@
 /* — dashboard: a 12-column grid of widgets (pages/app/DashboardPage.tsx) — */
 
+/* Release 1.28: the whole dashboard on one floating island (like the sidebar
+   and top bar), a shade lighter than the page so the white widgets stand out. */
+.dash-island {
+  display: flex; flex-direction: column; gap: 20px; padding: 20px;
+  background: var(--ui-island-bg); border-radius: var(--ui-island-radius); box-shadow: var(--ui-island-shadow);
+}
+:root[data-density="compact"] .dash-island { gap: 14px; padding: 16px; }
+.ui-main > .dash-island.is-filled { flex-grow: 1; }
 .dash-top { display: flex; align-items: center; gap: 10px; min-height: 40px; }
 .dash-hello { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 .dash-today { margin-top: 2px; font-size: 13px; color: var(--ui-muted); }

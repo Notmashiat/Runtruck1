@@ -15,6 +15,18 @@ const ROW = 10; // grid row unit (px); widget heights snap to it
 // The widgets count as filling the window when the tallest column ends this
 // close to the bottom (the grid's spacing below the last widget).
 const FILLED_WITHIN = 24;
+
+// The room the grid has to leave at the bottom of the page: the padding (and
+// edge) of everything around it, up to and including the page's main area.
+function spaceBelow(grid: HTMLElement, main: HTMLElement): number {
+  let space = 0;
+  for (let el = grid.parentElement; el; el = el.parentElement) {
+    const cs = getComputedStyle(el);
+    space += parseFloat(cs.paddingBottom) + (el === main ? 0 : parseFloat(cs.borderBottomWidth));
+    if (el === main) break;
+  }
+  return space;
+}
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 function greeting() {
@@ -76,7 +88,7 @@ export function DashboardPage() {
     if (!grid || !main || !fitting) return;
     const measure = () => {
       const top = grid.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop;
-      const room = main.clientHeight - top - parseFloat(getComputedStyle(main).paddingBottom) - 1;
+      const room = main.clientHeight - top - spaceBelow(grid, main) - 1;
       const full = grid.offsetHeight / shownScale.current;
       setScale(full > 0 ? Math.min(1, Math.floor((room / full) * 1000) / 1000) : 1);
     };
@@ -168,18 +180,22 @@ export function DashboardPage() {
     if (!grid || !main) return;
     const compute = () => {
       const next: Record<string, number> = {};
+      let windowFull = false;
       if (fillDown) {
-        const bottom = main.getBoundingClientRect().top + main.clientHeight - parseFloat(getComputedStyle(main).paddingBottom);
+        const bottom = main.getBoundingClientRect().top + main.clientHeight - spaceBelow(grid, main);
         const hOf = new Map(heights.split(',').map((x) => { const [id, h] = x.split(':'); return [id, Number(h)] as const; }));
         const items = [...grid.querySelectorAll<HTMLElement>('[data-widget]')].map((el) => ({ id: el.dataset.widget ?? '', r: el.getBoundingClientRect() }));
         const ends = items.map((a) => a.r.top + (hOf.get(a.id) ?? 0) * shownScale.current);
         const filled = ends.length > 0 && bottom - Math.max(...ends) <= FILLED_WITHIN;
+        windowFull = filled;
         items.forEach((a, i) => {
           const below = items.some((b) => b !== a && b.r.top >= a.r.bottom - 1 && b.r.left < a.r.right - 1 && b.r.right > a.r.left + 1);
           const extra = Math.floor(bottom - ends[i]);
           if (filled && !below && extra > 0) next[a.id] = extra;
         });
       }
+      // The island runs to the bottom too, level with the sidebar, when the widgets fill it.
+      grid.closest('.dash-island')?.classList.toggle('is-filled', windowFull);
       setStretch((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
     };
     // Runs once when it starts watching, then whenever the window or grid changes size.
@@ -201,6 +217,8 @@ export function DashboardPage() {
 
   return (
     <>
+      {/* Release 1.28: the greeting, Customize and every widget on one floating island. */}
+      <section className="dash-island" aria-label="Dashboard">
       <div className={`dash-top${editing ? ' is-editing' : ''}`}>
         {o.greeting && !editing && (
           <div>
@@ -298,6 +316,7 @@ export function DashboardPage() {
           </div>
         )}
       </div>
+      </section>
 
       {optionsOpen && <DashboardCustomize layout={layout} onChange={setLayout} onClose={() => setOptionsOpen(false)} />}
     </>

@@ -33,6 +33,7 @@
   --ui-red-soft: #fdecea;
   --ui-purple: #6d3fd1;
   --ui-info: #4338ca;
+  --ui-island-bg: #f6f7fa;
   --ui-info-soft: #e8e7fc;
   --ui-purple-soft: #efe8fd;
   --ui-teal: #0f766e;
@@ -74,6 +75,7 @@
   --ui-nav-pill: #1f1f1f;
   --ui-red: #ff8a80;
   --ui-red-soft: #2e1614;
+  --ui-island-bg: #0b0b0b;
   --ui-info: #a5b4fc;
   --ui-info-soft: #1b1b33;
   --ui-purple: #b79bff;
@@ -116,6 +118,7 @@
   --ui-nav-pill: #2b3648;
   --ui-red: #ff8a80;
   --ui-red-soft: #3a1c1a;
+  --ui-island-bg: #131a24;
   --ui-info: #a5b4fc;
   --ui-info-soft: #232650;
   --ui-purple: #b79bff;

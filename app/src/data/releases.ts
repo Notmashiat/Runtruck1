@@ -393,6 +393,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.28',
+    date: '2026-11-11',
+    title: 'The Dashboard on one island',
+    changes: [
+      {
+        id: 'dash-island', kind: 'Updated', section: 'Dashboard', title: 'The greeting, Customize and every widget on one floating island (live for every company)',
+        details: 'The Dashboard sits on a single rounded panel, like the sidebar and the top bar: the greeting and date, the Customize button and all the widgets, a shade lighter than the page so the widgets stand out. When the widgets fill the window, the panel runs down level with the sidebar; otherwise it is as tall as its content. Works in light mode and both dark modes.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
