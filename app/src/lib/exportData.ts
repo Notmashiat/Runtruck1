@@ -13,11 +13,9 @@ import { batchStatus, batchTotal, billableLoads, invoiceTotal, statusOf, usd, ty
 import { PAYROLL_IN_HR, type Load } from '../data/mock';
 import { payLabel, runTotals, type Employee, type PayRun } from '../data/payroll';
 import type { CustomerRecord } from '../data/customers';
-import { PLANNER_EVENTS, type PlannerEvent } from '../data/planner';
 import { CLAIMS, MAINTENANCE, VIOLATIONS } from '../data/safety';
 import { netCost, paidOf, recordable, woCost, type ClaimRecord, type ViolationRecord, type WorkOrder } from '../data/safetyRecords';
 import { isoFromText } from './clock';
-import { readScoped } from './account';
 
 // Release 1.6 moves Payroll from Accounting to HR.
 const PAYROLL_GROUP = PAYROLL_IN_HR ? 'HR' : 'Accounting';
@@ -135,15 +133,6 @@ function makeSet<T>(
 
 const units = (s: string) => s.split(/\s*\/\s*/).map((x) => x.trim()).filter((x) => x && x !== '—');
 const money = (n: number) => usd(n);
-
-function plannerEvents(): PlannerEvent[] {
-  try {
-    const raw = JSON.parse(readScoped('runtruck-planner-events') ?? 'null') as unknown;
-    return Array.isArray(raw) ? (raw as PlannerEvent[]) : PLANNER_EVENTS;
-  } catch {
-    return PLANNER_EVENTS;
-  }
-}
 
 export function buildExportSets(s: ExportSources): ExportSet[] {
   const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns, contracts, onboardings, workOrders, violations, claims } = s;
@@ -309,12 +298,6 @@ export function buildExportSets(s: ExportSources): ExportSet[] {
       ['id', 'Claim', (c) => c.id], ['date', 'Date', (c) => c.date], ['driver', 'Driver', (c) => c.driver], ['unit', 'Units', (c) => c.unit], ['type', 'Type', (c) => c.type],
       ['claimant', 'Claimant', (c) => c.claimant], ['reserved', 'Reserved', (c) => money(c.reserved)], ['paid', 'Paid', (c) => money(c.paid)], ['status', 'Status', (c) => c.status],
     ], (c) => ({ date: toIso(c.date), drivers: [c.driver], trucks: units(c.unit) }))]),
-
-    makeSet({ key: 'planner', label: 'Planner events', group: 'Planner', perm: 'planner', dateLabel: 'event date' }, plannerEvents(), [
-      ['title', 'Event', (e) => e.title], ['category', 'Category', (e) => e.category], ['date', 'Date', (e) => e.date], ['endDate', 'Ends', (e) => e.endDate],
-      ['start', 'From', (e) => e.start], ['end', 'To', (e) => e.end], ['place', 'Place', (e) => e.place], ['driver', 'Driver', (e) => e.driver],
-      ['truck', 'Truck', (e) => e.truck], ['customer', 'Customer', (e) => e.customer], ['loadId', 'Load', (e) => e.loadId], ['notes', 'Notes', (e) => e.notes],
-    ], (e) => ({ date: e.date, drivers: [e.driver ?? ''], trucks: units(e.truck ?? ''), customer: e.customer ?? '' })),
   ];
 }
 

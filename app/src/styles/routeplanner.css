@@ -1,0 +1,265 @@
+/* The route planner (release 1.41, components/RoutePlanner.tsx): RunTruck's
+   own pills, number widgets and cards around a truck-by-day schedule. */
+.rp { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* — top bar: Fleet / Single truck, Week / 2 weeks, and the week (right) — */
+.rp-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; }
+.rp-bar-left { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.rp-bar-left > .ui-tabs { align-self: center; }
+.rp-truck-pick { min-width: 200px; }
+.rp-week { justify-self: end; display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px 6px; background: var(--ui-card); border-radius: 999px; }
+.rp-week-title { min-width: 168px; padding: 0 6px; font-size: 15px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.rp-icon-btn {
+  display: inline-grid; width: 32px; height: 32px; flex: none; place-items: center; padding: 0; border: 0; border-radius: 999px;
+  background: transparent; color: var(--ui-text-2); font-size: 20px; line-height: 1; cursor: pointer;
+}
+.rp-icon-btn:hover { background: var(--ui-hover); color: var(--ui-text); }
+.rp-icon-btn:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: 1px; }
+.rp-range { align-self: center; }
+
+/* — number widgets, as on the Dashboard — */
+.rp-widgets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.rp-w { min-height: 108px; padding: 16px 18px; cursor: default; }
+.rp-w:hover { box-shadow: none; }
+.rp-w .dash-kpi-value { font-size: clamp(24px, 2.4vw, 34px); }
+.rp-w.is-alert .dash-kpi-value { color: var(--ui-red); }
+
+/* — the schedule card — */
+.rp-card { display: flex; flex-direction: column; min-width: 0; }
+.rp-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 20px; border-bottom: 1px solid var(--ui-border); }
+.rp-card-head .ui-filter { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.rp-card-head .ui-filter::-webkit-scrollbar { display: none; }
+.rp-card-head .ui-filter-opt { flex: none; white-space: nowrap; }
+.rp-count { margin-left: 2px; font-weight: 700; color: var(--ui-muted); font-variant-numeric: tabular-nums; }
+.ui-filter-opt.is-active .rp-count { color: var(--ui-primary); }
+.rp-select { width: auto; height: 34px; padding-right: 30px; font-size: 13px; }
+.rp-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-left: auto; font-size: 12px; color: var(--ui-muted); }
+.rp-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.rp-swatch { display: inline-block; width: 14px; height: 10px; flex: none; border-radius: 3px; }
+
+.rp-scroll { overflow-x: auto; }
+.rp-grid { --rp-unit: 236px; --rp-lane-h: 54px; min-width: calc(var(--rp-unit) + var(--rp-days) * 96px); }
+.rp-head, .rp-row { display: grid; grid-template-columns: var(--rp-unit) minmax(0, 1fr); }
+.rp-head { position: sticky; top: 0; z-index: 3; background: var(--ui-thead); }
+.rp-head-unit { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px 10px 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ui-text-2); }
+.rp-head-unit span { font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ui-muted); }
+.rp-head-days { display: grid; grid-template-columns: repeat(var(--rp-days), minmax(0, 1fr)); }
+.rp-day { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 8px 4px; border-left: 1px solid var(--ui-border); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ui-muted); }
+.rp-day b { font-size: 17px; font-weight: 700; letter-spacing: 0; color: var(--ui-text); font-variant-numeric: tabular-nums; }
+.rp-day.is-today { color: var(--ui-primary); background: var(--ui-primary-soft); }
+.rp-day.is-today b { color: var(--ui-primary); }
+
+.rp-row { border-top: 1px solid var(--ui-border); }
+.rp-row:hover .rp-unit, .rp-row:hover .rp-track { background-color: var(--ui-row-hover); }
+.rp-unit { position: sticky; left: 0; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; min-width: 0; padding: 10px 16px 10px 20px; background: var(--ui-card); border-right: 1px solid var(--ui-border); }
+.rp-unit-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; max-width: 100%; }
+.rp-unit-id { flex: none; font-size: 14px; font-weight: 800; color: var(--ui-text); text-decoration: none; font-variant-numeric: tabular-nums; }
+.rp-unit-id:hover { color: var(--ui-primary); }
+.rp-unit-driver { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.rp-unit-meta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--ui-muted); }
+.rp-unit .ui-chip { margin-top: 2px; }
+
+.rp-track { position: relative; display: grid; grid-template-columns: repeat(var(--rp-days), minmax(0, 1fr)); min-height: calc(var(--rp-lanes) * var(--rp-lane-h) + 16px); background: var(--ui-card); }
+.rp-cell { border-left: 1px solid var(--ui-border); }
+.rp-cell.is-today { background: color-mix(in srgb, var(--ui-primary) 5%, transparent); }
+.rp-now { position: absolute; top: 0; bottom: 0; z-index: 1; width: 2px; margin-left: -1px; background: var(--ui-primary); pointer-events: none; }
+.rp-row:first-of-type .rp-now::before { content: ''; position: absolute; top: -1px; left: -4px; width: 10px; height: 10px; border-radius: 999px; background: var(--ui-primary); }
+
+/* A bar: a load, a service or an empty spell. */
+.rp-barx {
+  position: absolute; z-index: 1; top: calc(8px + var(--rp-lane) * var(--rp-lane-h)); height: calc(var(--rp-lane-h) - 8px);
+  display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 6px; padding: 0 10px; overflow: hidden;
+  border: 1px solid transparent; border-radius: 10px; text-align: left; font: inherit; cursor: pointer;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+.rp-barx:hover { box-shadow: 0 2px 8px var(--ui-shadow); }
+.rp-barx:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: 2px; }
+.rp-barx.is-picked { box-shadow: 0 0 0 2px var(--ui-card), 0 0 0 4px var(--ui-primary); }
+.rp-barx.is-cut-l { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
+.rp-barx.is-cut-r { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
+.rp-bar-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; }
+.rp-bar-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; opacity: 0.8; font-variant-numeric: tabular-nums; }
+
+.is-done.rp-barx, .rp-swatch.is-done { background: var(--ui-green-soft); color: var(--ui-green); }
+.is-moving.rp-barx, .rp-swatch.is-moving { background: var(--ui-primary); color: var(--ui-on-primary); }
+.is-booked.rp-barx, .rp-swatch.is-booked { background: var(--ui-primary-soft); color: var(--ui-primary); border-color: color-mix(in srgb, var(--ui-primary) 35%, transparent); }
+.is-shop.rp-barx, .rp-swatch.is-shop {
+  color: var(--ui-amber);
+  background: repeating-linear-gradient(135deg, var(--ui-amber-soft) 0 8px, color-mix(in srgb, var(--ui-amber-soft) 55%, var(--ui-card)) 8px 16px);
+}
+.is-empty.rp-barx, .rp-swatch.is-empty { background: var(--ui-red-soft); color: var(--ui-red); border: 1px dashed color-mix(in srgb, var(--ui-red) 55%, transparent); }
+
+/* — the selected bar — */
+.rp-detail { padding: 18px 20px 20px; }
+.rp-detail-head { display: flex; align-items: flex-start; gap: 12px; }
+.rp-detail-head .rp-swatch { width: 10px; height: 36px; border-radius: 4px; }
+.rp-detail-title { flex: 1; min-width: 0; }
+.rp-detail-title h3 { font-size: 18px; font-weight: 700; }
+.rp-detail-title p { margin-top: 2px; font-size: 13px; color: var(--ui-muted); }
+.rp-detail-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px 20px; margin-top: 16px; }
+.rp-detail-facts div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rp-detail-facts span { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ui-muted); }
+.rp-detail-facts b { font-size: 14px; font-weight: 600; }
+.rp-detail-facts em { font-style: normal; font-weight: 500; color: var(--ui-muted); }
+.rp-detail-note { margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--ui-text-2); }
+.rp-progress { margin-top: 16px; max-width: 420px; }
+.rp-progress-top { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--ui-muted); }
+.rp-progress-track { height: 8px; margin-top: 6px; border-radius: 999px; background: var(--ui-track); overflow: hidden; }
+.rp-progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--ui-primary); }
+.rp-detail-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.rp-detail-actions a.ui-btn { text-decoration: none; color: var(--ui-text); }
+.rp-detail-actions a.ui-btn-primary { color: var(--ui-on-primary); }
+
+@media (max-width: 1100px) { .rp-widgets { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rp-legend { margin-left: 0; } }
+@media (max-width: 640px) {
+  .rp-range { margin: 0; }
+  .rp-week-title { min-width: 0; font-size: 14px; }
+  .rp-widgets { gap: 10px; }
+  .rp-w { min-height: 0; padding: 12px 14px; }
+  .rp-w .dash-kpi-note { display: none; }
+  .rp-w .dash-kpi-value { margin-top: 10px; font-size: 24px; }
+  .rp-grid { --rp-unit: 150px; }
+  .rp-unit { padding: 8px 10px; }
+  .rp-unit-meta { display: none; }
+  .rp-card-head { padding: 12px; }
+  .rp-legend { display: none; }
+}
+
+/* — release 1.41 changes — */
+
+/* The planner fits the window: only the schedule scrolls (not on a phone or
+   a very short window, where the page scrolls as usual). */
+@media (min-width: 761px) and (min-height: 560px) {
+  .ui-main:has(> .rp) { overflow: hidden; }
+  .ui-main > .rp { flex: 1 1 auto; min-height: 0; }
+  .rp-card { flex: 1 1 auto; min-height: 0; }
+  .rp-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+}
+.rp-widgets, .rp-stats, .rp-bar { flex: none; }
+
+/* Search, region and equipment */
+.rp-search { position: relative; flex: 1 1 240px; max-width: 340px; }
+.rp-search .ui-input { height: 36px; padding-left: 34px; border-radius: 999px; font-size: 13px; }
+.rp-search-ico { position: absolute; top: 50%; left: 12px; transform: translateY(-50%); font-size: 17px; color: var(--ui-muted); pointer-events: none; }
+.rp-pick { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--ui-muted); }
+.rp-pick .rp-select { height: 36px; border-radius: 999px; padding-left: 12px; }
+
+/* A truck that needs a load today or tomorrow: a blinking red dot. */
+.rp-alert-dot { position: relative; flex: none; width: 9px; height: 9px; align-self: center; border-radius: 999px; background: var(--ui-red); }
+.rp-alert-dot::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; background: var(--ui-red); opacity: 0.45; animation: rp-ping 1.4s ease-out infinite; }
+@keyframes rp-ping { 0% { transform: scale(0.6); opacity: 0.55; } 80%, 100% { transform: scale(1.8); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .rp-alert-dot::after { animation: none; opacity: 0.25; } }
+
+/* Connect load: the empty spell that needs a load, as an open box. */
+.rp-connect {
+  position: absolute; z-index: 1; top: calc(8px + var(--rp-lane) * var(--rp-lane-h)); height: calc(var(--rp-lane-h) - 8px);
+  display: flex; align-items: center; gap: 10px; min-width: 6px; padding: 0 12px 0 8px; overflow: hidden;
+  border: 1.5px dashed color-mix(in srgb, var(--ui-red) 60%, transparent); border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-red-soft) 70%, transparent); color: var(--ui-red);
+}
+.rp-connect-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.rp-connect-btn {
+  flex: none; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--ui-red); color: var(--ui-card);
+  font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.rp-connect-btn:hover { filter: brightness(1.08); }
+.rp-connect-btn:focus-visible { outline: 2px solid var(--ui-red); outline-offset: 2px; }
+
+/* Deadhead to a load: just before its pickup */
+.rp-dh {
+  position: absolute; z-index: 2; top: calc(8px + var(--rp-lane) * var(--rp-lane-h) + (var(--rp-lane-h) - 8px) / 2); transform: translate(calc(-100% - 6px), -50%);
+  padding: 2px 7px; border-radius: 999px; background: var(--ui-card); box-shadow: 0 0 0 1px var(--ui-border);
+  font-size: 10.5px; font-weight: 700; color: var(--ui-muted); white-space: nowrap; pointer-events: auto; font-variant-numeric: tabular-nums;
+}
+
+/* The load summary, popping up at the bottom of the page */
+.rp-sheet {
+  position: fixed; z-index: 60; left: 50%; bottom: 20px; width: min(980px, calc(100vw - 32px)); transform: translateX(-50%);
+  padding: 18px 20px 18px; background: var(--ui-card); border-radius: 20px; box-shadow: 0 18px 48px rgba(15, 23, 42, 0.28), 0 0 0 1px var(--ui-border);
+  animation: rp-sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes rp-sheet-in { from { transform: translate(-50%, 24px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .rp-sheet { animation: none; } }
+.rp-sheet-head { display: flex; align-items: flex-start; gap: 12px; }
+.rp-sheet-head .rp-swatch { width: 10px; height: 38px; border-radius: 4px; }
+.rp-sheet-head .ui-chip { margin-top: 4px; }
+.rp-sheet-title { flex: 1; min-width: 0; }
+.rp-sheet-title h3 { font-size: 18px; font-weight: 700; }
+.rp-sheet-title p { margin-top: 2px; font-size: 13px; color: var(--ui-muted); }
+.rp-sheet-facts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px 18px; margin-top: 16px; }
+.rp-sheet-facts div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rp-sheet-facts span { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ui-muted); }
+.rp-sheet-facts b { font-size: 14px; font-weight: 600; }
+.rp-sheet-facts em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-style: normal; color: var(--ui-muted); }
+.rp-sheet-foot { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-top: 16px; }
+.rp-sheet-foot .rp-progress { flex: 1 1 260px; margin-top: 0; }
+.rp-sheet-foot a.ui-btn { text-decoration: none; color: var(--ui-text); }
+.rp-sheet-foot a.ui-btn-primary { color: var(--ui-on-primary); }
+@media (max-width: 900px) { .rp-sheet-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .rp-sheet-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rp-sheet { bottom: 10px; } }
+
+/* Connect load popup */
+.rp-connect-dialog { width: min(760px, calc(100vw - 32px)); }
+.rp-reloads { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: min(52vh, 460px); overflow-y: auto; }
+.rp-reload { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px 16px; padding: 12px 14px; border: 1px solid var(--ui-border); border-radius: 14px; }
+.rp-reload:hover { border-color: color-mix(in srgb, var(--ui-primary) 40%, var(--ui-border)); }
+.rp-reload-route { font-size: 14px; font-weight: 700; }
+.rp-reload-figs { display: flex; gap: 14px; font-size: 12px; color: var(--ui-muted); white-space: nowrap; }
+.rp-reload-figs b { color: var(--ui-text); }
+.rp-fine { font-size: 12px; color: var(--ui-muted); }
+@media (max-width: 640px) { .rp-reload { grid-template-columns: minmax(0, 1fr) auto; } .rp-reload-figs { grid-column: 1 / -1; flex-wrap: wrap; } }
+
+/* Single truck: six figures with the change from the week before */
+.rp-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+.rp-stat .dash-kpi-value { margin-top: 10px; align-self: flex-start; }
+.rp-delta { margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--ui-muted); }
+.rp-delta.is-good { color: var(--ui-green); }
+.rp-delta.is-bad { color: var(--ui-red); }
+.rp-grid.is-single { min-width: calc(var(--rp-unit) + var(--rp-days) * 96px); }
+.rp-truck-table { border-top: 1px solid var(--ui-border); }
+@media (max-width: 1280px) { .rp-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .rp-bar { grid-template-columns: minmax(0, 1fr) auto; } .rp-range { grid-column: 1; grid-row: 2; justify-self: start; } .rp-week { grid-column: 2; grid-row: 1 / 3; } }
+@media (max-width: 640px) {
+  .rp-bar { grid-template-columns: minmax(0, 1fr); }
+  .rp-range, .rp-week { grid-column: 1; grid-row: auto; justify-self: start; }
+  .rp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .rp-search { max-width: none; flex-basis: 100%; }
+}
+
+/* Dragging a load to another truck */
+.rp-barx.can-drag { cursor: grab; touch-action: none; }
+.rp-grid.is-dragging, .rp-grid.is-dragging * { cursor: grabbing !important; user-select: none; }
+.rp-barx.is-lifted { z-index: 20; opacity: 0.92; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.3); transition: none; pointer-events: auto; }
+.rp-row.is-drop .rp-track, .rp-row.is-drop .rp-unit { background-color: var(--ui-primary-soft); }
+.rp-row.is-drop .rp-track { box-shadow: inset 0 0 0 2px var(--ui-primary); }
+.rp-drop-note { margin-top: 2px; font-size: 12px; font-weight: 700; color: var(--ui-primary); }
+.rp-grid.is-dragging .rp-unit { z-index: 4; }
+.rp-move { margin-right: 4px; }
+
+/* Appointment windows (release 1.41): shown for the load under the pointer or
+   selected, as brackets on its line, so a busy week stays on one line each. */
+.rp-win {
+  position: absolute; z-index: 0; top: calc(4px + var(--rp-lane) * var(--rp-lane-h)); height: var(--rp-lane-h);
+  border: 1.5px dashed color-mix(in srgb, var(--ui-primary) 55%, transparent); border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-primary) 7%, transparent); pointer-events: none;
+}
+.rp-win.is-drop { border-color: color-mix(in srgb, var(--ui-green) 60%, transparent); background: color-mix(in srgb, var(--ui-green) 7%, transparent); }
+.rp-win-cap {
+  position: absolute; z-index: 6; top: calc(var(--rp-lane) * var(--rp-lane-h) - 14px); transform: translateX(0);
+  padding: 3px 9px; border-radius: 999px; background: var(--ui-card); box-shadow: 0 2px 10px var(--ui-shadow), 0 0 0 1px var(--ui-border);
+  font-size: 11px; font-weight: 600; line-height: 16px; color: var(--ui-text-2); white-space: nowrap; pointer-events: none;
+}
+.rp-win-cap b { font-weight: 800; }
+.rp-win-cap b.is-pickup { color: var(--ui-primary); }
+.rp-win-cap b.is-drop { color: var(--ui-green); }
+.rp-win-cap span { color: var(--ui-muted); }
+.rp-row:first-of-type .rp-win-cap { top: calc(var(--rp-lane) * var(--rp-lane-h) + var(--rp-lane-h) + 2px); }
+
+/* A load the truck cannot make in time */
+.rp-barx.is-late { box-shadow: 0 0 0 2px var(--ui-red); }
+.rp-barx.is-late.is-picked { box-shadow: 0 0 0 2px var(--ui-card), 0 0 0 4px var(--ui-red); }
+.rp-late-badge {
+  display: inline-grid; width: 15px; height: 15px; margin-right: 5px; place-items: center; vertical-align: -2px;
+  border-radius: 999px; background: var(--ui-red); color: #fff; font-size: 10px; font-weight: 800;
+}
+.rp-sheet-late { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--ui-red-soft); color: var(--ui-red); font-size: 13px; font-weight: 600; }

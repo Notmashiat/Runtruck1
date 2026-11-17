@@ -483,6 +483,9 @@ select.nl-inp { appearance: none; -webkit-appearance: none; padding-right: 36px;
 @media (min-width: 640px) { .nl-toast { left: auto; right: 32px; } }
 .nl-toast-done { color: #6ee7b7; }
 .nl-toast-info { color: var(--nl-a200); }
+.nl-toast-action { flex: none; margin-left: 4px; padding: 4px 10px; border: 0; border-radius: 8px; background: rgba(255, 255, 255, 0.12); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.nl-toast-action:hover { background: rgba(255, 255, 255, 0.2); }
+.nl-toast-action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   .nl *, .nl *::before, .nl *::after, .nl-dp * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }

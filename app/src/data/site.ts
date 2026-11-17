@@ -36,7 +36,7 @@ export const JOURNEY: JourneyStep[] = [
   {
     key: 'dispatched', from: 0.14, status: 'Dispatched', chip: 'blue',
     title: 'Put a driver and a truck on it.',
-    body: 'Assign the driver, tractor and trailer, or cover it with a partner carrier. The planner shows every pickup and delivery on one calendar.',
+    body: 'Assign the driver, tractor and trailer, or cover it with a partner carrier. The planner shows every truck’s week, with its loads and empty time.',
   },
   {
     key: 'transit', from: 0.3, status: 'In transit', chip: 'blue',
@@ -73,7 +73,7 @@ export const stepAt = (p: number): number => {
 
 export const FEATURES: { title: string; body: string }[] = [
   { title: 'Loads & dispatch', body: 'Multi-stop loads with appointment windows, rates and charges. Status, documents and a full history on every load.' },
-  { title: 'Planner', body: 'A calendar of every pickup and delivery next to your own events. Drag an event to move it.' },
+  { title: 'Planner', body: 'Every truck across the week: its loads, deadhead and empty time. Connect a nearby load, or drag a load to another truck.' },
   { title: 'Fleet', body: 'Drivers, trucks and trailers with the dates that matter: CDL and medical card, plates, odometer and next service.' },
   { title: 'Customers & facilities', body: 'Customers with terms, credit limits and documents. Shipper and receiver sites with hours, dock rules and detention risk.' },
   { title: 'Invoicing', body: 'Invoices built from delivered loads, PDFs on your letterhead, batches for factoring, past-due reminders and late fees.' },

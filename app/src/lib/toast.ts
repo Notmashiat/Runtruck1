@@ -6,14 +6,16 @@ export interface ToastMessage {
   id: number;
   text: string;
   kind: 'done' | 'info';
+  // A button on the message (release 1.41: Undo after moving a load).
+  action?: { label: string; run: () => void };
 }
 
 type Listener = (t: ToastMessage) => void;
 const listeners = new Set<Listener>();
 let seq = 0;
 
-export function toast(text: string, kind: ToastMessage['kind'] = 'done') {
-  const t = { id: ++seq, text, kind };
+export function toast(text: string, kind: ToastMessage['kind'] = 'done', action?: ToastMessage['action']) {
+  const t = { id: ++seq, text, kind, action };
   listeners.forEach((l) => l(t));
 }
 

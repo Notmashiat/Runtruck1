@@ -564,6 +564,33 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.41',
+    date: '2026-11-17',
+    title: 'Route planner replaces the calendar',
+    changes: [
+      {
+        id: 'route-planner', kind: 'New', section: 'Planner', title: 'Route planner (live for every company)',
+        details: 'Planner is now a route planner: every truck as a row across the week (or two), its loads as bars from pickup to drop, service visits, and the time it stands empty. Search by truck, driver, load # or city, filter by region, equipment and status, and see trucks on the road, needing a load, in the shop and booked revenue at the top. Only the schedule scrolls. Click a load for a summary at the bottom of the page. The calendar planner and its own events (meetings, home time) are gone.',
+      },
+      {
+        id: 'planner-connect', kind: 'New', section: 'Planner', title: 'Needs a load, Connect load and deadhead (live for every company)',
+        details: 'A blinking red dot marks a truck that is empty, or will be today or tomorrow, with no reload booked. An empty spell gets a Connect load box: it lists booked loads with no truck whose pickup is within the deadhead range (150 miles to start, 50–500) of where the truck empties and that it can reach in time; Connect gives the load that truck and driver. Deadhead miles show before each pickup. Miles are estimated from the cities on each load.',
+      },
+      {
+        id: 'planner-drag', kind: 'New', section: 'Planner', title: 'Drag a load to another truck (live for every company)',
+        details: 'Drag a booked load onto another truck’s row to give it to that truck and its driver (or pick the truck in the load summary). Its trailer follows the truck; a dispatched load goes back to Booked to be dispatched again. The message warns about a truck in the shop or windows it cannot make, and has Undo.',
+      },
+      {
+        id: 'planner-windows', kind: 'New', section: 'Planner', title: 'Appointment windows and the planned run (live for every company)',
+        details: 'Bars show when the truck can really be at each stop — after the drop before, the deadhead drive and time at the dock — so a wide pickup window after a morning drop sits right after it on the same line instead of stacking. Hover or select a load to see its pickup and drop windows; a load the truck cannot make in time is outlined in red with how late it would be.',
+      },
+      {
+        id: 'planner-truck', kind: 'New', section: 'Planner', title: 'Single truck view (live for every company)',
+        details: 'Pick a truck to see its week: total miles, loads booked, gross, average rate per mile, loaded and deadhead miles, each with the change from the week before, and a list of its loads.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

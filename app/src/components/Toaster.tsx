@@ -11,7 +11,8 @@ export function Toaster() {
     const off = onToast((t) => {
       setShown(t);
       window.clearTimeout(timer);
-      timer = window.setTimeout(() => setShown(null), 4500);
+      // A message with a button (Undo) stays a little longer.
+      timer = window.setTimeout(() => setShown(null), t.action ? 8000 : 4500);
     });
     return () => {
       off();
@@ -23,6 +24,9 @@ export function Toaster() {
     <div className="nl-toast" role="status" aria-live="polite">
       <Fa icon={shown.kind === 'info' ? faCircleInfo : faCircleCheck} className={shown.kind === 'info' ? 'nl-toast-info' : 'nl-toast-done'} />
       <span>{shown.text}</span>
+      {shown.action && (
+        <button type="button" className="nl-toast-action" onClick={() => { shown.action?.run(); setShown(null); }}>{shown.action.label}</button>
+      )}
     </div>
   );
 }
