@@ -591,6 +591,21 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.42',
+    date: '2026-11-17',
+    title: 'Messages',
+    changes: [
+      {
+        id: 'messenger', kind: 'New', section: 'Everywhere', title: 'Messages (live for every company)',
+        details: 'A thin Messages bar sits at the bottom right of every page, with the number of unread messages. Click it and it opens upwards into a panel on the right, half the page tall: the chat list (search, pinned chats, last message, time and unread count) and, when a chat is open, the conversation with a back arrow at the top left. Private chats with each driver and team member, and group chats for all drivers and the office. Send text and emoji (Enter sends, Shift+Enter adds a line), photos and files. This version keeps chats in this browser; Esc goes back, then closes.',
+      },
+      {
+        id: 'messenger-trucks', kind: 'New', section: 'Everywhere', title: 'Truck chats, dispatch to chat, save to a load (live for every company)',
+        details: 'Every truck has a group chat named after its driver and unit ("Marcus Hale Truck T-114") with its driver and the dispatchers; it follows the truck when the driver changes, and a new truck gets one. Group info lists the members with their role under each name. Dispatch to driver (in a load) can now send the load summary to the truck chat as a load card, as a text, or both. A photo or PDF a driver sends has a save button for everyone who is not a driver: attach it to a new load (New Load opens with it attached) or find an existing load, which opens with the file attached to save and confirm.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

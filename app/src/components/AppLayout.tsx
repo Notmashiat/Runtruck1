@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { PageSkeleton } from './Skeleton';
 import { Toaster } from './Toaster';
+import { Messenger } from './Messenger';
 import { StorageBanner, TrialBanner } from './StatusBanners';
 import { AppShellProvider } from '../context/AppShellContext';
 import { Suspense, useEffect } from 'react';
@@ -90,6 +91,9 @@ export function AppLayout() {
           </main>
         </div>
         <Toaster />
+        <ErrorBoundary where="Messages">
+          <Messenger />
+        </ErrorBoundary>
       </div>
     </AppShellProvider>
   );

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BATCH_SEED, INVOICE_SEED, invoiceSerial, type Batch, type InvoiceRecord } from '../data/invoicing';
-import { BILL_SEED, reviveBills, type BillRecord } from '../data/bills';
+import { BILL_SEED, reviveBills, type BillDocument, type BillRecord } from '../data/bills';
 import { CONTRACT_SEED, ONBOARDING_SEED, reviveContracts, reviveOnboarding, type ContractRecord, type OnboardingRecord } from '../data/hrRecords';
 import {
   CLAIM_SEED, REQUEST_SEED, VIOLATION_SEED, WORK_ORDER_SEED, reviveClaims, reviveDriverFiles, reviveRequests, reviveViolations, reviveWorkOrders,
@@ -8,6 +8,7 @@ import {
 } from '../data/safetyRecords';
 import { EMPLOYEE_SEED, PAYRUN_SEED, reviveEmployees, reviveRuns, type Employee, type PayRun } from '../data/payroll';
 import { AUTO_BY, AUTO_INACTIVE_DAYS, CUSTOMER_SEED, addDays, reviveCustomers, usageOf, type CustomerRecord } from '../data/customers';
+import { readScoped } from '../lib/account';
 import { todayIso } from '../lib/clock';
 import { syncCustomers } from '../lib/customerSync';
 import { reportError } from '../lib/errorLog';
@@ -169,6 +170,16 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
   return list.map((x, i) => (i === at ? item : x));
 }
 
+// Photos and files sent in the messenger (release 1.42), kept by the file cleanup.
+function messengerFiles(): BillDocument[] {
+  try {
+    const saved = JSON.parse(readScoped('runtruck-messenger') ?? 'null') as { messages?: { file?: BillDocument }[] } | null;
+    return Array.isArray(saved?.messages) ? saved.messages.flatMap((m) => (m.file ? [m.file] : [])) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function AppShellProvider({ children }: { children: ReactNode }) {
   const [searchText, setQuery] = useState('');
   const query = useDeferredValue(searchText);
@@ -228,7 +239,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (hadLoadProblems()) return;
     const keep = [...loads.flatMap(loadFiles), ...bills.flatMap((b) => b.documents), ...customers.flatMap((c) => c.documents), ...employees.flatMap((e) => e.documents), ...contracts.flatMap((c) => c.documents), ...onboardings.flatMap((o) => o.documents),
-      ...workOrders.flatMap((w) => w.documents), ...violations.flatMap((v) => v.documents), ...claims.flatMap((c) => c.documents), ...driverFiles.flatMap((f) => f.files)].filter((d) => d.stored).map((d) => d.id);
+      ...workOrders.flatMap((w) => w.documents), ...violations.flatMap((v) => v.documents), ...claims.flatMap((c) => c.documents), ...driverFiles.flatMap((f) => f.files),
+      ...messengerFiles()].filter((d) => d.stored).map((d) => d.id);
     pruneFiles(keep).catch((error: unknown) => reportError(error, { kind: 'storage', where: 'Cleaning up attached files' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

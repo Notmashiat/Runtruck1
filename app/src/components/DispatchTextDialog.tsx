@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { faCircleExclamation, faRotateLeft, faSpinner, faTriangleExclamation, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { faPaperPlane } from '@fortawesome/free-regular-svg-icons';
+import { truckChatId } from '../data/messenger';
+import { USER } from '../data/mock';
+import { getMessenger, postToTruck } from '../lib/messengerStore';
 import { sendText, twilioConnected } from '../lib/sms';
 import { Fa } from './Fa';
 
@@ -12,14 +15,18 @@ interface DispatchTextDialogProps {
   notes: string;
   // Some details are not filled in yet (they show as TBD).
   incomplete: boolean;
-  onSent: () => void;
+  // Release 1.42: the truck (its group chat gets the summary) and the load.
+  truck?: string;
+  loadId?: string;
+  onSent: (how: ('chat' | 'text')[]) => void;
   onClose: () => void;
 }
 
 // Dispatch to driver (New Load, release 1.21): the load summary as a text to
 // the connected truck's driver, sent through the company's own provider
 // (Settings › Integrations). Without one it asks to connect a provider.
-export function DispatchTextDialog({ driver, phone, summary, notes: startNotes, incomplete, onSent, onClose }: DispatchTextDialogProps) {
+// Release 1.42: it also goes to the truck's group chat in Messages.
+export function DispatchTextDialog({ driver, phone, summary, notes: startNotes, incomplete, truck, loadId, onSent, onClose }: DispatchTextDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState(summary);
@@ -27,6 +34,9 @@ export function DispatchTextDialog({ driver, phone, summary, notes: startNotes, 
   const [empty, setEmpty] = useState(false);
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState('');
+  const chat = truck ? getMessenger()?.chats.find((c) => c.id === truckChatId(truck)) : undefined;
+  const [viaChat, setViaChat] = useState(Boolean(chat));
+  const [viaText, setViaText] = useState(!chat || (twilioConnected() && Boolean(phone)));
 
   useEffect(() => {
     const el = ref.current;
@@ -54,19 +64,32 @@ export function DispatchTextDialog({ driver, phone, summary, notes: startNotes, 
       textRef.current?.focus();
       return;
     }
-    if (!twilioConnected()) {
+    if (!viaChat && !viaText) {
+      setProblem('Pick how to send it: the truck chat, a text message, or both.');
+      return;
+    }
+    if (viaText && !twilioConnected()) {
       setProblem('provider');
       return;
     }
     setSending(true);
     setProblem('');
-    const error = await sendText(phone, message());
-    setSending(false);
-    if (error) {
-      setProblem(error);
-      return;
+    const how: ('chat' | 'text')[] = [];
+    if (viaChat && truck) {
+      if (postToTruck(truck, { from: USER.name || 'Dispatch', load: loadId, text: message() })) how.push('chat');
     }
-    onSent();
+    if (viaText) {
+      const error = await sendText(phone, message());
+      if (error) {
+        setSending(false);
+        setProblem(how.length ? `Sent to the truck chat, but the text failed: ${error}` : error);
+        if (how.length) onSent(how);
+        return;
+      }
+      how.push('text');
+    }
+    setSending(false);
+    onSent(how);
     close();
   };
 
@@ -88,12 +111,23 @@ export function DispatchTextDialog({ driver, phone, summary, notes: startNotes, 
           <span className="nl-dp-ico"><Fa icon={faPaperPlane} /></span>
           <div>
             <h2 id="nl-dp-title" tabIndex={-1} className="nl-dp-title">Dispatch to driver</h2>
-            <p id="nl-dp-desc" className="nl-dp-desc">Text message to <b>{driver} · {phone || 'no phone on file'}</b></p>
+            <p id="nl-dp-desc" className="nl-dp-desc">The load summary to <b>{driver}</b></p>
           </div>
         </div>
         <button type="button" className="nl-dp-x nl-fbtn" aria-label="Close without sending" onClick={close}><Fa icon={faXmark} /></button>
       </header>
       <div className="nl-dp-body">
+        <fieldset className="nl-dp-via">
+          <legend className="nl-lbl">Send by</legend>
+          <label className={`nl-dp-opt${chat ? '' : ' is-off'}`}>
+            <input type="checkbox" checked={viaChat && Boolean(chat)} disabled={!chat} onChange={(e) => setViaChat(e.target.checked)} />
+            <span><b>Truck chat</b><span>{chat ? `${chat.title} · Messages` : truck ? `Truck ${truck} has no chat yet` : 'Pick a truck first'}</span></span>
+          </label>
+          <label className="nl-dp-opt">
+            <input type="checkbox" checked={viaText} onChange={(e) => setViaText(e.target.checked)} />
+            <span><b>Text message</b><span>{phone || 'No phone on file'}{twilioConnected() ? '' : ' · needs a text provider (Settings › Integrations)'}</span></span>
+          </label>
+        </fieldset>
         {incomplete && (
           <div className="nl-warn" style={{ marginTop: 0 }}>
             <Fa icon={faTriangleExclamation} />
@@ -121,7 +155,7 @@ export function DispatchTextDialog({ driver, phone, summary, notes: startNotes, 
           {empty && (
             <p id="nl-dp-err" className="nl-err"><Fa icon={faCircleExclamation} /><span>The message can't be empty — use "Reset from form" to rebuild it.</span></p>
           )}
-          <p id="nl-dp-hint" className="nl-hint">Built from the form. Edits here only change this text message.</p>
+          <p id="nl-dp-hint" className="nl-hint">Built from the form. Edits here only change this message.</p>
         </div>
         <div>
           <label className="nl-lbl" htmlFor="nl-dp-notes">Notes <span className="nl-opt">(optional)</span></label>
@@ -130,11 +164,11 @@ export function DispatchTextDialog({ driver, phone, summary, notes: startNotes, 
         </div>
       </div>
       <footer className="nl-dp-foot">
-        <p className="nl-dp-count" aria-live="polite">{len} characters · sends as {seg} text{seg > 1 ? 's' : ''}</p>
+        <p className="nl-dp-count" aria-live="polite">{viaText ? `${len} characters · sends as ${seg} text${seg > 1 ? 's' : ''}` : `${len} characters`}</p>
         <div className="nl-foot-btns" style={{ gap: 8 }}>
           <button type="button" className="nl-btn-ghost nl-fbtn" onClick={close}>Cancel</button>
           <button type="button" className="nl-btn-main nl-dp-send nl-fbtn" disabled={sending} onClick={() => void send()}>
-            {sending ? <><Fa icon={faSpinner} spin /><span>Sending…</span></> : <><Fa icon={faPaperPlane} /><span>Send text</span></>}
+            {sending ? <><Fa icon={faSpinner} spin /><span>Sending…</span></> : <><Fa icon={faPaperPlane} /><span>Send to driver</span></>}
           </button>
         </div>
       </footer>

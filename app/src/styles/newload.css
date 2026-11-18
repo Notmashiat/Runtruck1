@@ -633,3 +633,18 @@ input:focus-visible + .fu-pick { box-shadow: 0 0 0 4px var(--nl-a200); }
 .nlr-check input { accent-color: var(--nl-a600); }
 .nlr-sum-row dd { overflow-wrap: anywhere; }
 .nl-sec.is-last.fu-picking { padding-bottom: 264px; }
+
+/* A file brought over from the messenger (release 1.42) */
+.nl-attach-note { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px; padding: 12px 14px; border: 1px solid var(--nl-a200); border-radius: 12px; background: var(--nl-a50); font-size: 14px; line-height: 20px; color: var(--nl-ink); }
+.nl-attach-note .fa-svg { margin-top: 3px; color: var(--nl-a600); }
+
+/* Dispatch to driver: how to send (release 1.42) */
+.nl-dp-via { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; border: 0; }
+.nl-dp-via legend { grid-column: 1 / -1; margin-bottom: 6px; padding: 0; }
+.nl-dp-opt { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--nl-line); border-radius: 12px; background: var(--nl-surface); cursor: pointer; }
+.nl-dp-opt:has(input:checked) { border-color: var(--nl-a400); background: var(--nl-a50); }
+.nl-dp-opt.is-off { opacity: 0.6; cursor: default; }
+.nl-dp-opt input { margin-top: 3px; accent-color: var(--nl-a600); }
+.nl-dp-opt > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; color: var(--nl-mute); }
+.nl-dp-opt b { font-size: 14px; color: var(--nl-ink); }
+@media (max-width: 560px) { .nl-dp-via { grid-template-columns: minmax(0, 1fr); } }

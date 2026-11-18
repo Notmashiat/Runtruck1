@@ -126,9 +126,12 @@ interface NewLoadDialogProps {
   onClose: () => void;
   onSaved?: (id: string) => void;
   onDeleted?: () => void;
+  // Release 1.42: a file sent in the messenger, attached as the popup opens
+  // (saving the popup confirms it).
+  attach?: { doc: BillDocument; from: string };
 }
 
-export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDialogProps) {
+export function NewLoadDialog({ load, onClose, onSaved, onDeleted, attach }: NewLoadDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const scrollRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -152,7 +155,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
 
   const [loadNo] = useState(() => load?.id ?? nextId(loads));
   const [initial] = useState(() => startingDraft(load, customers));
-  const [d, setD] = useState<Draft>(initial);
+  const [d, setD] = useState<Draft>(() => (attach && !initial.docList.some((x) => x.doc.id === attach.doc.id) ? { ...initial, docList: [...initial.docList, { category: guessCat(attach.doc.name), doc: attach.doc }] } : initial));
   // Fields filled in for the user (tinted until edited).
   const [auto, setAuto] = useState<Set<string>>(() => new Set());
   const [touched, setTouched] = useState<Set<string>>(() => new Set());
@@ -164,12 +167,15 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
   const [ltlQuery, setLtlQuery] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [textedAt, setTextedAt] = useState('');
+  const [sentBy, setSentBy] = useState('text');
   const [events, setEvents] = useState<string[]>([]);
   const [uploadError, setUploadError] = useState('');
   const [over, setOver] = useState<'' | 'main' | 'more'>('');
-  const [current, setCurrent] = useState<SectionId>(editing ? 'load' : 'document');
+  const [current, setCurrent] = useState<SectionId>(editing && !attach ? 'load' : 'document');
 
-  const sections = SECTIONS.filter((s) => !editing || s.id !== 'document');
+  // Editing shows the documents only to confirm an attachment from the messenger.
+  const showDocs = !editing || Boolean(attach);
+  const sections = SECTIONS.filter((s) => showDocs || s.id !== 'document');
 
   useEffect(() => {
     const el = ref.current;
@@ -740,8 +746,17 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
           </div>
 
           <form className="nl-form" autoComplete="off" noValidate onSubmit={(e) => e.preventDefault()} onBlur={onBlurCapture}>
+            {attach && (
+              <div className="nl-attach-note" role="status">
+                <Fa icon={faCircleInfo} />
+                <span>
+                  <b>{attach.doc.name}</b> from {attach.from}’s message is attached below.{' '}
+                  {editing ? <>Check it, then <b>Save changes</b> to add it to load {loadNo}.</> : <>Fill in the load, then create it to keep the file with it.</>}
+                </span>
+              </div>
+            )}
             {/* 1. Document */}
-            {!editing && (
+            {showDocs && (
               <section id="nl-sec-document" className="nl-sec">
                 <SecHead title="Upload rate confirmation" sub="Optional — attach it here, then add BOLs, PODs and receipts." />
                 {!rateCon ? (
@@ -1334,7 +1349,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
                     <div className="nl-dispatch-row">
                       <p role="status" className="nl-dispatch-status">
                         {textedAt
-                          ? <><Fa icon={faCircleCheck} className="is-ok" /><b>Texted to {driverName} at {textedAt}</b></>
+                          ? <><Fa icon={faCircleCheck} className="is-ok" /><b>Sent to {driverName} by {sentBy} at {textedAt}</b></>
                           : <><Fa icon={faMessage} />Not sent to driver yet</>}
                       </p>
                       {driverName && (
@@ -1484,11 +1499,14 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
           driver={driverName} phone={phoneOf(driverName)} summary={buildSummary}
           notes={[d.instructions.trim(), d.directions.trim()].filter(Boolean).join('\n')}
           incomplete={[pickups[0]?.s.facility, pickups[0]?.s.date, deliveries[0]?.s.facility, deliveries[0]?.s.date, d.commodity].some((x) => !x?.trim())}
-          onSent={() => {
+          truck={d.truck} loadId={loadNo}
+          onSent={(how) => {
             const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const ways = how.map((h) => (h === 'chat' ? `the Truck ${d.truck} chat` : 'text')).join(' and ');
             setTextedAt(time);
-            setEvents((ev) => [...ev, `Load summary texted to ${driverName}`]);
-            toast(`Load summary texted to ${driverName}.`);
+            setSentBy(ways);
+            setEvents((ev) => [...ev, `Load summary sent to ${driverName} by ${ways}`]);
+            toast(`Load summary sent to ${driverName} by ${ways}.`);
           }}
           onClose={() => { setDispatching(false); later(() => document.querySelector<HTMLButtonElement>('.nl-dispatch-btn')?.focus()); }}
         />
