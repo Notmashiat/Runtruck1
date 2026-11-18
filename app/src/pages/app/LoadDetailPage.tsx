@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
 import { LoadDocuments, LoadStatusDialog, PipelineMove } from '../../components/LoadDialogs';
+import { useLoadDrop } from '../../components/LoadDrop';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
 import { facilityFor, stopHint } from '../../data/facilities';
@@ -19,6 +20,8 @@ export function LoadDetailPage() {
   // stages (At pickup, Delayed, Needs POD) is set from "Change status".
   const topBarMoves = isLive('load-detail-moves');
   const [changing, setChanging] = useState(false);
+  // Release 1.44: drop files anywhere on the page to attach them to this load.
+  const drop = useLoadDrop();
 
   // A deleted load, or a mistyped link.
   if (!sel) {
@@ -103,7 +106,11 @@ export function LoadDetailPage() {
   );
 
   return (
-    <>
+    <div className="ui-contents" {...drop.props(sel.id)}>
+      {drop.overId === sel.id && (
+        <div className="ui-drop-banner" aria-hidden="true"><span>Drop to attach to load {sel.id}</span></div>
+      )}
+      {drop.dialog}
       <Card>
         <h2 className="ui-h2" style={{ margin: 0 }}>{sel.route}</h2>
         <div style={{ marginTop: 6, fontSize: 14, color: 'var(--ui-muted)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
@@ -167,6 +174,6 @@ export function LoadDetailPage() {
           </Card>
         </div>
       </div>
-    </>
+    </div>
   );
 }

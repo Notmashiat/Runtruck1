@@ -648,3 +648,7 @@ input:focus-visible + .fu-pick { box-shadow: 0 0 0 4px var(--nl-a200); }
 .nl-dp-opt > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; color: var(--nl-mute); }
 .nl-dp-opt b { font-size: 14px; color: var(--nl-ink); }
 @media (max-width: 560px) { .nl-dp-via { grid-template-columns: minmax(0, 1fr); } }
+
+/* Files dragged over the load popup (release 1.44) */
+.nl-drop-overlay { position: absolute; inset: 8px; z-index: 40; display: grid; place-items: center; border: 2px dashed var(--nl-a400); border-radius: 18px; background: color-mix(in srgb, var(--nl-a50) 86%, transparent); pointer-events: none; }
+.nl-drop-overlay span { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 999px; background: var(--nl-surface); box-shadow: var(--nl-shadow-lg); font-size: 15px; font-weight: 700; color: var(--nl-a700); }

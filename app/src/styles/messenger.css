@@ -255,3 +255,14 @@
 .ms-finder-main > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--ui-muted); }
 /* With the panel open, corner messages sit beside it instead of over it. */
 @media (min-width: 900px) { body:has(.ms-panel) .nl-toast { right: 430px; bottom: 24px; } }
+
+/* — Messages in a window of its own (release 1.43) — */
+.ms-panel.is-window { inset: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; height: 100dvh; max-height: none; border-radius: 0; box-shadow: none; animation: none; }
+.ms-bar.is-out { opacity: 0.92; }
+.ms-bar.is-out .fa-svg { font-size: 13px; }
+
+/* — drag and drop (release 1.44) — */
+.ms-drop { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; border: 2px dashed var(--ms-accent); border-radius: inherit; background: color-mix(in srgb, var(--ms-panel) 82%, transparent); pointer-events: none; }
+.ms-drop span { display: inline-flex; align-items: center; gap: 9px; padding: 11px 16px; border-radius: 999px; background: var(--ms-accent); color: #fff; font-size: 14px; font-weight: 700; }
+.ms-photo[draggable='true'], .ms-file[draggable='true'] { cursor: grab; }
+.ms-photo[draggable='true']:active, .ms-file[draggable='true']:active { cursor: grabbing; }

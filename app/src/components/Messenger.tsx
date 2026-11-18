@@ -1,8 +1,8 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  faArrowLeft, faBoxOpen, faCheck, faCheckDouble, faChevronDown, faComments, faFile, faFileCirclePlus, faFolderOpen, faMagnifyingGlass,
-  faPaperPlane, faPaperclip, faThumbtack, faTruck, faUserGroup,
+  faArrowLeft, faBoxOpen, faCheck, faCheckDouble, faChevronDown, faComments, faDownLeftAndUpRightToCenter, faFile, faFileCirclePlus, faFolderOpen,
+  faMagnifyingGlass, faPaperPlane, faPaperclip, faThumbtack, faTruck, faUpRightFromSquare, faUserGroup,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFaceSmile, faFloppyDisk } from '@fortawesome/free-regular-svg-icons';
 import { useAppShell } from '../context/AppShellContext';
@@ -18,6 +18,9 @@ import { fileSize, openDocument, readAttachment } from '../lib/attachments';
 import { demoBolPhoto, demoPodPdf } from '../lib/demoPaperwork';
 import { getFile } from '../lib/fileStore';
 import { getMessenger, newMessageId, setMessenger, updateMessenger, useMessenger } from '../lib/messengerStore';
+import { carriesFile, readDrop, startDocDrag } from '../lib/fileDrop';
+import { listen, mainWindow, popOut, post } from '../lib/messengerWindow';
+import { toast } from '../lib/toast';
 import { matchesQuery } from '../lib/search';
 import { getSettings } from '../lib/settingsStore';
 import { Fa } from './Fa';
@@ -81,17 +84,28 @@ function demoFiles(linked: Load[]) {
 
 type Saving = { doc: BillDocument; from: string } & ({ step: 'choose' } | { step: 'find' } | { step: 'new' } | { step: 'edit'; load: Load });
 
-export function Messenger() {
+// The pop-out window, while this tab opened it (to bring it forward).
+let popped: Window | null = null;
+
+// `window`: Messages fills a window of its own (release 1.43, /messages).
+export function Messenger({ mode = 'docked' }: { mode?: 'docked' | 'window' }) {
   const { drivers, trucks, loads } = useAppShell();
+  const navigate = useNavigate();
   const me = useMemo(whoAmI, []);
   const state = useMessenger();
-  const [open, setOpen] = useState(false);
+  const inWindow = mode === 'window';
+  const [open, setOpen] = useState(inWindow);
+  // When the pop-out last said it is open (0: not popped out).
+  const [outSince, setOutSince] = useState(0);
   const [chatId, setChatId] = useState<string | null>(null);
   const [info, setInfo] = useState(false);
   const [search, setSearch] = useState('');
   const [now, setNow] = useState(() => Date.now());
   const [saving, setSaving] = useState<Saving | null>(null);
   const bar = useRef<HTMLButtonElement>(null);
+  // Release 1.44: files dragged over the panel (dropped in a chat, they are sent).
+  const [dropping, setDropping] = useState(false);
+  const dragDepth = useRef(0);
 
   const office = useMemo(() => getSettings().team.filter((t) => t.active).map((t) => ({ name: t.name, role: t.role })), []);
   const truckLinks = useMemo(() => trucks.map((t) => ({ unit: t.unit, driver: t.driver && t.driver !== 'Unassigned' ? t.driver : '', archived: t.archived })), [trucks]);
@@ -121,6 +135,60 @@ export function Messenger() {
     return () => window.clearInterval(t);
   }, []);
 
+  // — popping out (release 1.43) —
+  useEffect(() => {
+    if (inWindow) {
+      // The pop-out: says it is open, comes forward when asked, and says goodbye.
+      const beat = () => post({ type: 'alive' });
+      beat();
+      const t = window.setInterval(beat, 2000);
+      const bye = () => post({ type: 'gone' });
+      window.addEventListener('pagehide', bye);
+      const off = listen((m) => { if (m.type === 'focus') window.focus(); });
+      return () => { window.clearInterval(t); window.removeEventListener('pagehide', bye); bye(); off(); };
+    }
+    // The app: knows Messages is popped out, and does what the pop-out asks.
+    return listen((m) => {
+      if (m.type === 'alive') setOutSince(Date.now());
+      else if (m.type === 'gone') setOutSince(0);
+      else if (m.type === 'dock') { setOutSince(0); setOpen(true); window.focus(); }
+      else if (m.type === 'navigate') { navigate(m.to); window.focus(); }
+      else if (m.type === 'save') { setSaving({ doc: m.doc, from: m.from, step: 'choose' }); window.focus(); }
+    });
+  }, [inWindow, navigate]);
+  // A pop-out that stopped saying it is open has been closed.
+  useEffect(() => {
+    if (!outSince) return;
+    const t = window.setTimeout(() => setOutSince((s) => (Date.now() - s > 6000 ? 0 : s)), 6500);
+    return () => window.clearTimeout(t);
+  }, [outSince]);
+  const poppedOut = !inWindow && outSince > 0;
+
+  const detach = () => {
+    const w = popOut();
+    if (!w) {
+      toast('Your browser blocked the Messages window. Allow pop-ups for RunTruck, then try again.', 'info');
+      return;
+    }
+    popped = w;
+    setOutSince(Date.now());
+    setOpen(false);
+    setInfo(false);
+  };
+  const dock = () => {
+    post({ type: 'dock' });
+    mainWindow()?.focus();
+    window.close();
+  };
+  // Pages and saving to a load happen in the RunTruck window.
+  const go = (to: string) => {
+    if (!inWindow) { navigate(to); return; }
+    if (mainWindow()) { post({ type: 'navigate', to }); mainWindow()?.focus(); } else window.open(to, '_blank');
+  };
+  const saveTo = (doc: BillDocument, from: string) => {
+    if (inWindow && mainWindow()) { post({ type: 'save', doc, from }); mainWindow()?.focus(); } else setSaving({ doc, from, step: 'choose' });
+  };
+
   const close = () => { setOpen(false); setInfo(false); window.setTimeout(() => bar.current?.focus(), 0); };
   // Esc: from a member list or a chat back to the list, then closes.
   useEffect(() => {
@@ -129,7 +197,7 @@ export function Messenger() {
       if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
       if (info) setInfo(false);
       else if (chatId) setChatId(null);
-      else close();
+      else if (!inWindow) close();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -145,25 +213,69 @@ export function Messenger() {
     updateMessenger((s) => ({ ...s, messages: [...s.messages, { ...m, id: newMessageId(), at, from: me.name }], read: { ...s.read, [m.chatId]: at } }));
   };
 
+  // Files dropped on the panel are sent in the open chat (an attachment
+  // already in that chat is not sent again).
+  const dropFiles = async (e: DragEvent) => {
+    if (!carriesFile(e)) return;
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDropping(false);
+    if (!chat) { toast('Open a chat, then drop the files there to send them.', 'info'); return; }
+    const got = await readDrop(e.dataTransfer);
+    if (got.problems.length) toast(got.problems.join(' '), 'info');
+    const have = new Set(messagesOf(state, chat.id).map((m) => m.file?.id));
+    got.docs.filter((d) => !have.has(d.id)).forEach((file) => send({ chatId: chat.id, file }));
+  };
+
+  // The buttons at the top right of every view.
+  const actions: ReactNode = inWindow ? (
+    <button type="button" className="ms-icon" aria-label="Put Messages back in RunTruck" title="Put back in RunTruck" onClick={dock}><Fa icon={faDownLeftAndUpRightToCenter} /></button>
+  ) : (
+    <>
+      <button type="button" className="ms-icon" aria-label="Open Messages in its own window" title="Open in its own window" onClick={detach}><Fa icon={faUpRightFromSquare} /></button>
+      <button type="button" className="ms-icon" aria-label="Close messages" title="Close" onClick={close}><Fa icon={faChevronDown} /></button>
+    </>
+  );
+  // Popped out: the bar brings the window forward (or reopens it if it was closed).
+  const openBar = () => {
+    if (poppedOut) {
+      if (popped && !popped.closed) popped.focus();
+      else post({ type: 'focus' });
+      return;
+    }
+    setOpen(true);
+  };
+
   return (
     <>
       {!open ? (
-        <button ref={bar} type="button" className="ms-bar" onClick={() => setOpen(true)} aria-label={unread ? `Messages, ${unread} unread` : 'Messages'}>
-          <Fa icon={faComments} />
-          <span>Messages</span>
+        <button ref={bar} type="button" className={`ms-bar${poppedOut ? ' is-out' : ''}`} onClick={openBar} aria-label={`${unread ? `Messages, ${unread} unread` : 'Messages'}${poppedOut ? ' (open in its own window)' : ''}`}>
+          <Fa icon={poppedOut ? faUpRightFromSquare : faComments} />
+          <span>{poppedOut ? 'Messages · in its own window' : 'Messages'}</span>
           {unread > 0 && <b className="ms-badge">{unread > 99 ? '99+' : unread}</b>}
         </button>
       ) : (
-        <div className="ms-panel" role="dialog" aria-label="Messages">
+        <div
+          className={`ms-panel${inWindow ? ' is-window' : ''}`} role={inWindow ? 'main' : 'dialog'} aria-label="Messages"
+          onDragEnter={(e) => { if (!carriesFile(e)) return; e.preventDefault(); dragDepth.current += 1; setDropping(true); }}
+          onDragOver={(e) => { if (!carriesFile(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = chat ? 'copy' : 'none'; }}
+          onDragLeave={() => { dragDepth.current = Math.max(0, dragDepth.current - 1); if (!dragDepth.current) setDropping(false); }}
+          onDrop={(e) => void dropFiles(e)}
+        >
+          {dropping && (
+            <div className="ms-drop" aria-hidden="true">
+              <span><Fa icon={faPaperclip} />{chat ? `Drop to send to ${chatName(chat, me.name)}` : 'Open a chat to send files'}</span>
+            </div>
+          )}
           {chat && info ? (
-            <Members chat={chat} me={me.name} online={online} onBack={() => setInfo(false)} onClose={close} />
+            <Members chat={chat} me={me.name} online={online} onBack={() => setInfo(false)} actions={actions} go={go} />
           ) : chat ? (
             <ChatView
-              chat={chat} me={me} state={state} now={now} online={online} onBack={() => setChatId(null)} onInfo={() => setInfo(true)} onClose={close}
-              onSend={send} onSeen={() => markRead(chat.id)} onSave={(doc, from) => setSaving({ doc, from, step: 'choose' })}
+              chat={chat} me={me} state={state} now={now} online={online} onBack={() => setChatId(null)} onInfo={() => setInfo(true)} actions={actions} go={go}
+              onSend={send} onSeen={() => markRead(chat.id)} onSave={saveTo}
             />
           ) : (
-            <ChatList state={state} me={me.name} now={now} search={search} onSearch={setSearch} online={online} onOpen={(c) => { setChatId(c.id); setInfo(false); markRead(c.id); }} onClose={close} />
+            <ChatList state={state} me={me.name} now={now} search={search} onSearch={setSearch} online={online} onOpen={(c) => { setChatId(c.id); setInfo(false); markRead(c.id); }} actions={actions} />
           )}
         </div>
       )}
@@ -176,16 +288,16 @@ export function Messenger() {
       )}
       {(saving?.step === 'new' || saving?.step === 'edit') && (
         <Suspense fallback={null}>
-          <NewLoadDialog load={saving.step === 'edit' ? saving.load : undefined} attach={{ doc: saving.doc, from: saving.from }} onClose={() => setSaving(null)} />
+          <NewLoadDialog load={saving.step === 'edit' ? saving.load : undefined} attach={{ docs: [saving.doc], from: `${saving.from}’s message` }} onClose={() => setSaving(null)} />
         </Suspense>
       )}
     </>
   );
 }
 
-function ChatList({ state, me, now, search, onSearch, online, onOpen, onClose }: {
+function ChatList({ state, me, now, search, onSearch, online, onOpen, actions }: {
   state: MessengerState; me: string; now: number; search: string; onSearch: (s: string) => void; online: (name: string) => boolean;
-  onOpen: (c: Chat) => void; onClose: () => void;
+  onOpen: (c: Chat) => void; actions: ReactNode;
 }) {
   const q = search.trim().toLowerCase();
   const chats = chatOrder(state).filter((c) => !q || chatName(c, me).toLowerCase().includes(q) || messagesOf(state, c.id).some((m) => m.text?.toLowerCase().includes(q)));
@@ -193,7 +305,7 @@ function ChatList({ state, me, now, search, onSearch, online, onOpen, onClose }:
     <>
       <div className="ms-head">
         <div className="ms-head-title">Messages</div>
-        <button type="button" className="ms-icon" aria-label="Close messages" onClick={onClose}><Fa icon={faChevronDown} /></button>
+        {actions}
       </div>
       <label className="ms-search">
         <Fa icon={faMagnifyingGlass} />
@@ -233,14 +345,14 @@ function ChatList({ state, me, now, search, onSearch, online, onOpen, onClose }:
 }
 
 // A group's members, each with their role under their name.
-function Members({ chat, me, online, onBack, onClose }: { chat: Chat; me: string; online: (name: string) => boolean; onBack: () => void; onClose: () => void }) {
+function Members({ chat, me, online, onBack, actions, go }: { chat: Chat; me: string; online: (name: string) => boolean; onBack: () => void; actions: ReactNode; go: (to: string) => void }) {
   const people = [...chat.members].sort((a, b) => Number(roleIn(chat, b) === DRIVER_ROLE) - Number(roleIn(chat, a) === DRIVER_ROLE) || a.localeCompare(b));
   return (
     <>
       <div className="ms-head is-chat">
         <button type="button" className="ms-icon" aria-label="Back to the chat" onClick={onBack}><Fa icon={faArrowLeft} /></button>
         <div className="ms-head-who"><div className="ms-head-name">Group info</div></div>
-        <button type="button" className="ms-icon" aria-label="Close messages" onClick={onClose}><Fa icon={faChevronDown} /></button>
+        {actions}
       </div>
       <div className="ms-info">
         <div className="ms-info-top">
@@ -250,7 +362,7 @@ function Members({ chat, me, online, onBack, onClose }: { chat: Chat; me: string
             <div className="ms-head-sub">{chat.members.length} members{chat.truck ? ` · Truck ${chat.truck}` : ''}</div>
           </div>
         </div>
-        {chat.truck && <Link className="ms-info-link" to="/app/fleet/trucks"><Fa icon={faTruck} />Open truck {chat.truck} in Fleet</Link>}
+        {chat.truck && <a className="ms-info-link" href="/app/fleet/trucks" onClick={(e) => { e.preventDefault(); go('/app/fleet/trucks'); }}><Fa icon={faTruck} />Open truck {chat.truck} in Fleet</a>}
         <div className="ms-info-label">Members</div>
         <ul className="ms-members">
           {people.map((p) => (
@@ -282,15 +394,18 @@ function Photo({ m, onLoad }: { m: ChatMessage; onLoad: () => void }) {
   }, [m.file]);
   const src = m.file?.stored ? stored : m.file?.data ?? null;
   return (
-    <button type="button" className="ms-photo" onClick={() => m.file && void openDocument(m.file)} aria-label={`Open photo ${m.file?.name ?? ''}`}>
-      {src ? <img src={src} alt={m.file?.name ?? 'Photo'} onLoad={onLoad} /> : <span className="ms-photo-missing">Photo not in this browser</span>}
+    <button
+      type="button" className="ms-photo" draggable onDragStart={(e) => m.file && startDocDrag(e, m.file, m.from)}
+      onClick={() => m.file && void openDocument(m.file)} aria-label={`Open photo ${m.file?.name ?? ''}. Drag it onto a load to attach it.`} title="Click to open · drag onto a load to attach"
+    >
+      {src ? <img src={src} alt={m.file?.name ?? 'Photo'} onLoad={onLoad} draggable={false} /> : <span className="ms-photo-missing">Photo not in this browser</span>}
     </button>
   );
 }
 
-function ChatView({ chat, me, state, now, online, onBack, onInfo, onClose, onSend, onSeen, onSave }: {
+function ChatView({ chat, me, state, now, online, onBack, onInfo, actions, go, onSend, onSeen, onSave }: {
   chat: Chat; me: Person; state: MessengerState; now: number; online: (name: string) => boolean;
-  onBack: () => void; onInfo: () => void; onClose: () => void; onSend: (m: Omit<ChatMessage, 'id' | 'at' | 'from'>) => void; onSeen: () => void;
+  onBack: () => void; onInfo: () => void; actions: ReactNode; go: (to: string) => void; onSend: (m: Omit<ChatMessage, 'id' | 'at' | 'from'>) => void; onSeen: () => void;
   onSave: (doc: BillDocument, from: string) => void;
 }) {
   const [draft, setDraft] = useState('');
@@ -352,7 +467,7 @@ function ChatView({ chat, me, state, now, online, onBack, onInfo, onClose, onSen
       <div className="ms-head is-chat">
         <button type="button" className="ms-icon" aria-label="Back to chats" onClick={onBack}><Fa icon={faArrowLeft} /></button>
         {chat.kind === 'group' ? <button type="button" className="ms-head-btn" onClick={onInfo} aria-label={`${name}: members`}>{who}</button> : who}
-        <button type="button" className="ms-icon" aria-label="Close messages" onClick={onClose}><Fa icon={faChevronDown} /></button>
+        {actions}
       </div>
 
       <div ref={scroll} className="ms-wall" role="log" aria-label={`Messages with ${name}`}>
@@ -380,12 +495,15 @@ function ChatView({ chat, me, state, now, online, onBack, onInfo, onClose, onSen
                     <div className="ms-load">
                       <div className="ms-load-head"><Fa icon={faBoxOpen} /><b>Load {m.load} dispatched</b></div>
                       <pre className="ms-load-text">{m.text}</pre>
-                      <Link className="ms-load-open" to={`/app/loads/${m.load}`}>Open load →</Link>
+                      <a className="ms-load-open" href={`/app/loads/${m.load}`} onClick={(e) => { e.preventDefault(); go(`/app/loads/${m.load}`); }}>Open load →</a>
                     </div>
                   )}
                   {photo && <Photo m={m} onLoad={toEnd} />}
                   {m.file && !photo && (
-                    <button type="button" className="ms-file" onClick={() => m.file && void openDocument(m.file)}>
+                    <button
+                      type="button" className="ms-file" draggable onDragStart={(e) => m.file && startDocDrag(e, m.file, m.from)}
+                      onClick={() => m.file && void openDocument(m.file)} title="Click to open · drag onto a load to attach"
+                    >
                       <span className="ms-file-ico"><Fa icon={faFile} /></span>
                       <span className="ms-file-text"><b>{m.file.name}</b><span>{fileSize(m.file.size)}</span></span>
                     </button>

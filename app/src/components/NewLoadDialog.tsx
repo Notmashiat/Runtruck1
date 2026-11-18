@@ -15,6 +15,7 @@ import { nextId as nextRecordId, type FleetTrailer, type FleetTruck } from '../d
 import { CARRIERS, type Carrier, type Load } from '../data/mock';
 import { fileSize, readAttachment } from '../lib/attachments';
 import { usePersisted } from '../lib/persist';
+import { carriesFile, loadFileProblem, readDrop } from '../lib/fileDrop';
 import { toast } from '../lib/toast';
 import { DispatchTextDialog } from './DispatchTextDialog';
 import { hl } from './highlight';
@@ -126,9 +127,9 @@ interface NewLoadDialogProps {
   onClose: () => void;
   onSaved?: (id: string) => void;
   onDeleted?: () => void;
-  // Release 1.42: a file sent in the messenger, attached as the popup opens
-  // (saving the popup confirms it).
-  attach?: { doc: BillDocument; from: string };
+  // Release 1.42: files attached as the popup opens — sent in Messages, or
+  // (release 1.44) dropped on a load. Saving the popup confirms them.
+  attach?: { docs: BillDocument[]; from: string };
 }
 
 export function NewLoadDialog({ load, onClose, onSaved, onDeleted, attach }: NewLoadDialogProps) {
@@ -155,7 +156,10 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted, attach }: New
 
   const [loadNo] = useState(() => load?.id ?? nextId(loads));
   const [initial] = useState(() => startingDraft(load, customers));
-  const [d, setD] = useState<Draft>(() => (attach && !initial.docList.some((x) => x.doc.id === attach.doc.id) ? { ...initial, docList: [...initial.docList, { category: guessCat(attach.doc.name), doc: attach.doc }] } : initial));
+  const [d, setD] = useState<Draft>(() => {
+    const extra = (attach?.docs ?? []).filter((doc) => !initial.docList.some((x) => x.doc.id === doc.id));
+    return extra.length ? { ...initial, docList: [...initial.docList, ...extra.map((doc) => ({ category: guessCat(doc.name), doc }))] } : initial;
+  });
   // Fields filled in for the user (tinted until edited).
   const [auto, setAuto] = useState<Set<string>>(() => new Set());
   const [touched, setTouched] = useState<Set<string>>(() => new Set());
@@ -173,8 +177,25 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted, attach }: New
   const [over, setOver] = useState<'' | 'main' | 'more'>('');
   const [current, setCurrent] = useState<SectionId>(editing && !attach ? 'load' : 'document');
 
-  // Editing shows the documents only to confirm an attachment from the messenger.
-  const showDocs = !editing || Boolean(attach);
+  // Editing shows the documents to confirm files that were brought in.
+  const [docsOpen, setDocsOpen] = useState(Boolean(attach?.docs.length));
+  const showDocs = !editing || docsOpen;
+  // Release 1.44: files dropped anywhere on the popup go to its documents.
+  const [dropping, setDropping] = useState(false);
+  const dragDepth = useRef(0);
+  const dropOnDialog = async (e: DragEvent) => {
+    dragDepth.current = 0;
+    setDropping(false);
+    if (e.defaultPrevented || !carriesFile(e)) return;
+    e.preventDefault();
+    const got = await readDrop(e.dataTransfer, loadFileProblem);
+    setUploadError(got.problems.join(' '));
+    if (!got.docs.length) return;
+    setD((p) => ({ ...p, docList: [...p.docList, ...got.docs.filter((doc) => !p.docList.some((x) => x.doc.id === doc.id)).map((doc) => ({ category: guessCat(doc.name), doc }))] }));
+    setDocsOpen(true);
+    toast(`${got.docs.length === 1 ? got.docs[0].name : `${got.docs.length} files`} added to the documents${editing ? ' — save to keep them' : ''}.`);
+    later(() => document.getElementById('nl-sec-document')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }));
+  };
   const sections = SECTIONS.filter((s) => showDocs || s.id !== 'document');
 
   useEffect(() => {
@@ -396,7 +417,13 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted, attach }: New
     onDragOver: (e: DragEvent) => { e.preventDefault(); setOver(zone); },
     onDragEnter: (e: DragEvent) => { e.preventDefault(); setOver(zone); },
     onDragLeave: (e: DragEvent) => { e.preventDefault(); setOver(''); },
-    onDrop: (e: DragEvent) => { e.preventDefault(); setOver(''); if (e.dataTransfer.files.length) onFiles(e.dataTransfer.files); },
+    onDrop: (e: DragEvent) => {
+      setOver('');
+      // An attachment from Messages is taken by the popup itself (below).
+      if (!e.dataTransfer.files.length) return;
+      e.preventDefault();
+      onFiles(e.dataTransfer.files);
+    },
   });
 
   // — truck —
@@ -686,7 +713,16 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted, attach }: New
       onKeyDown={(e) => {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !dispatching && !confirm) { e.preventDefault(); create(); }
       }}
+      onDragEnter={(e) => { if (carriesFile(e)) { dragDepth.current += 1; setDropping(true); } }}
+      onDragOver={(e) => { if (carriesFile(e)) e.preventDefault(); }}
+      onDragLeave={() => { dragDepth.current = Math.max(0, dragDepth.current - 1); if (!dragDepth.current) setDropping(false); }}
+      onDrop={(e) => void dropOnDialog(e)}
     >
+      {dropping && !over && (
+        <div className="nl-drop-overlay" aria-hidden="true">
+          <span><Fa icon={faCloudArrowUp} />Drop to add to {editing ? `load ${loadNo}’s` : 'this load’s'} documents</span>
+        </div>
+      )}
       <datalist id="nl-facility-options">{siteFacilities.map((f) => <option key={f.id} value={f.name} />)}</datalist>
       <datalist id="nl-charge-types">{CHARGE_TYPES.map((c) => <option key={c} value={c} />)}</datalist>
       <datalist id="nl-doc-cats">{DOC_CATS.map((c) => <option key={c} value={c} />)}</datalist>
@@ -746,12 +782,12 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted, attach }: New
           </div>
 
           <form className="nl-form" autoComplete="off" noValidate onSubmit={(e) => e.preventDefault()} onBlur={onBlurCapture}>
-            {attach && (
+            {attach && attach.docs.length > 0 && (
               <div className="nl-attach-note" role="status">
                 <Fa icon={faCircleInfo} />
                 <span>
-                  <b>{attach.doc.name}</b> from {attach.from}’s message is attached below.{' '}
-                  {editing ? <>Check it, then <b>Save changes</b> to add it to load {loadNo}.</> : <>Fill in the load, then create it to keep the file with it.</>}
+                  <b>{attach.docs.length === 1 ? attach.docs[0].name : `${attach.docs.length} files`}</b> from {attach.from} {attach.docs.length === 1 ? 'is' : 'are'} attached below.{' '}
+                  {editing ? <>Check, then <b>Save changes</b> to add {attach.docs.length === 1 ? 'it' : 'them'} to load {loadNo}.</> : <>Fill in the load, then create it to keep {attach.docs.length === 1 ? 'the file' : 'the files'} with it.</>}
                 </span>
               </div>
             )}

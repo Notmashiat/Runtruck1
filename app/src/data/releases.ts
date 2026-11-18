@@ -606,6 +606,32 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.43',
+    date: '2026-11-18',
+    title: 'Messages in its own window',
+    changes: [
+      {
+        id: 'messenger-popout', kind: 'New', section: 'Everywhere', title: 'Pop Messages out into its own window (live for every company)',
+        details: 'A new button next to the collapse arrow opens Messages in a slim window of its own at the right of the screen, so it can stay open beside RunTruck or on another screen. Chats stay in step between the two. While it is popped out the Messages bar says so and brings the window forward. Open load, Open truck and saving an attachment to a load happen in the RunTruck window, which comes to the front; the button at the top of the window puts Messages back in RunTruck. If the browser blocks pop-ups, RunTruck says so.',
+      },
+    ],
+  },
+  {
+    id: '1.44',
+    date: '2026-11-18',
+    title: 'Drag and drop files',
+    changes: [
+      {
+        id: 'drop-on-load', kind: 'New', section: 'Loads', title: 'Drop files on a load (live for every company)',
+        details: 'Drag files onto a load in Loads (in every pipeline stage), onto a load’s own page, or anywhere on the load popup: the load’s edit popup opens with them in its documents, each filed by its name (BOL, POD, lumper receipt…), ready to check and save. PDF, PNG and JPG files up to 10 MB, as in New Load; anything else is turned away with a message. A file dropped where it cannot go is ignored instead of opening in the browser.',
+      },
+      {
+        id: 'drop-messenger', kind: 'New', section: 'Everywhere', title: 'Drag and drop in Messages (live for every company)',
+        details: 'Drop files on an open chat to send them. Photos and files in a chat can be dragged out onto a load (in Loads, a load’s page or the load popup — also from Messages in its own window) to attach them to it.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

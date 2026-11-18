@@ -6,6 +6,7 @@ import { CountUp } from '../../components/CountUp';
 import { DriverName } from '../../components/DriverCard';
 import { PipelineMove } from '../../components/LoadDialogs';
 import { NewLoadDialog } from '../../components/NewLoadDialog';
+import { useLoadDrop } from '../../components/LoadDrop';
 import { Tag } from '../../components/Tag';
 import { useAppShell, type LoadTab } from '../../context/AppShellContext';
 import { LOAD_STAGES, billingByLoad, stageOf, stageSlug, type LoadStage } from '../../data/loads';
@@ -69,6 +70,8 @@ export function LoadsPage() {
   // Long lists are drawn a page at a time (lib/paging.tsx).
   const paged = usePaged(rows, { key: openId, of: (r) => r.id });
   const [editing, setEditing] = useState<Load | null>(null);
+  // Release 1.44: drop files on a load to attach them (its edit popup opens).
+  const drop = useLoadDrop();
 
   const countOf = (status: string) => String(loads.filter((l) => l.status === status).length);
   // Each figure opens the pipeline stage its loads are in (release 1.39).
@@ -154,7 +157,7 @@ export function LoadsPage() {
             const stops = stopsOf(l);
             return (
               <Fragment key={l.id}>
-                <tr className={`is-clickable${open ? ' is-open' : ''}`} onClick={() => setOpenId(open ? null : l.id)}>
+                <tr className={`is-clickable${open ? ' is-open' : ''}${drop.overId === l.id ? ' is-drop' : ''}`} onClick={() => setOpenId(open ? null : l.id)} {...drop.props(l.id)}>
                   <td className="strong">{l.id}</td>
                   <td className="strong">{l.ref}</td>
                   <td className={unassigned ? 'muted' : ''}>{unassigned ? 'Unassigned' : l.unit}</td>
@@ -162,10 +165,10 @@ export function LoadsPage() {
                   <td>{l.pickup}</td>
                   <td><DriverName name={l.driver} /></td>
                   <td className="num">{l.rate}</td>
-                  <td className="num"><Tag label={l.status} tagClass={l.tagClass} /></td>
+                  <td className="num">{drop.overId === l.id ? <span className="ui-drop-hint">Drop to attach</span> : <Tag label={l.status} tagClass={l.tagClass} />}</td>
                 </tr>
                 {open && (
-                  <tr>
+                  <tr className={drop.overId === l.id ? 'is-drop' : undefined} {...drop.props(l.id)}>
                     <td colSpan={8} className="ui-expand-cell">
                       <div className="ui-expand">
                         <div>
@@ -278,6 +281,7 @@ export function LoadsPage() {
       {editing && (
         <NewLoadDialog load={editing} onClose={() => setEditing(null)} onDeleted={() => setEditing(null)} />
       )}
+      {drop.dialog}
     </>
   );
 }

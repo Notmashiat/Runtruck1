@@ -16,6 +16,7 @@ import { getSettings } from './lib/settingsStore';
 // public site does not load the app. lazyNamed (lib/lazyPage.ts) reloads once
 // if a screen will not download because RunTruck was updated meanwhile.
 const AppLayout = page(() => import('./components/AppLayout'), 'AppLayout');
+const MessagesWindowPage = page(() => import('./pages/MessagesWindowPage'), 'MessagesWindowPage');
 
 const DashboardPage = page(() => import('./pages/app/DashboardPage'), 'DashboardPage');
 const LoadsPage = page(() => import('./pages/app/LoadsPage'), 'LoadsPage');
@@ -103,6 +104,8 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       {/* With logging in switched off (lib/account.ts), /login opens the app. */}
       <Route path="/login" element={LOGIN_REQUIRED ? <LoginPage /> : <Navigate to="/app" replace />} />
+      {/* Messages in a window of its own (release 1.43). */}
+      <Route path="/messages" element={<MessagesWindowPage />} />
       <Route path="/app" element={<AppLayout />}>
         <Route index element={<StartPage />} />
         <Route path="dashboard" element={<DashboardPage />} />

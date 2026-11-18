@@ -13,6 +13,7 @@ import { ErrorToast } from './components/StatusBanners'
 import { installErrorHandlers, reportError, setErrorRelease } from './lib/errorLog'
 import { currentRelease } from './lib/releases'
 import { initTheme } from './lib/theme'
+import { installStrayDropGuard } from './lib/fileDrop'
 import { initSettings } from './lib/applySettings'
 import { storedSession } from './lib/account'
 import { ownStylesheets, reloadForNewVersion, stylesMissing } from './lib/lazyPage'
@@ -20,6 +21,8 @@ import App from './App.tsx'
 
 // Record problems from here on (see lib/errorLog.ts).
 installErrorHandlers()
+// A file dropped outside a drop area is ignored instead of opened (release 1.44).
+installStrayDropGuard()
 
 // Opened mid-update, the stylesheet can fail to arrive while the scripts do:
 // reload (a few times at most) to fetch it, instead of drawing an unstyled page.
