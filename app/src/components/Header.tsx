@@ -14,10 +14,8 @@ import { lazyNamed } from '../lib/lazyPage';
 import { ErrorBoundary } from './ErrorBoundary';
 import { describe, FilterPanel } from './FilterPanel';
 import { DialogSkeleton } from './Skeleton';
-import { Fa } from './Fa';
-import { ThemeSwitch } from './ThemeSwitch';
+import { GlobalSearch } from './GlobalSearch';
 import { NotificationBell } from './NotificationBell';
-import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 
 // The forms the top bar opens. Each is downloaded when it is first needed
 // (not with the app), and fetched ahead of time for the page that is open so
@@ -90,7 +88,7 @@ const NO_FILTERS: ViewKey[] = ['dashboard', 'planner'];
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { searchText, setQuery, approveAll, loads, invoices, updateLoad, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
+  const { approveAll, loads, invoices, updateLoad, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
@@ -247,8 +245,10 @@ export function Header() {
     <header className="ui-topbar">
       {/* Release 1.22: the search (or, on a load's page, the way back) and the
           clock, theme and page buttons each sit on their own floating card. */}
-      {onLoadDetail ? (
-        <div className="ui-island ui-topbar-left">
+      {/* Release 1.48: the search on every page, a load's page included
+          (after its way back). */}
+      {onLoadDetail && (
+        <div className="ui-island ui-topbar-back">
           <button onClick={() => navigate('/app/loads')} className="ui-btn" type="button">
             ← Loads
           </button>
@@ -258,32 +258,23 @@ export function Header() {
             </button>
           )}
         </div>
-      ) : (
-        <label className="ui-island ui-topbar-left ui-search-island">
-          <Fa icon={faMagnifyingGlass} className="ui-search-icon" />
-          <input
-            className="ui-search"
-            value={searchText}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
-            aria-label="Search"
-          />
-        </label>
       )}
-      <div className="ui-island ui-topbar-right">
-        <time className="ui-clock" dateTime={now.toISOString()} title={formatNow(now, { dateStyle: 'full', timeStyle: 'long' })}>
+      <GlobalSearch compact={onLoadDetail} />
+      {/* Release 1.48: the clock, the bell and each of the page's buttons on
+          islands of their own (light/dark moved to the sidebar). */}
+      <div className="ui-topbar-right">
+        <time className="ui-island ui-clock" dateTime={now.toISOString()} title={formatNow(now, { dateStyle: 'full', timeStyle: 'long' })}>
           <span className="ui-clock-date">{formatNow(now, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
           <span>{formatNow(now, { hour: 'numeric', minute: '2-digit' })}</span>
         </time>
-        <ThemeSwitch />
-        <NotificationBell />
+        <div className="ui-island ui-bell-island"><NotificationBell /></div>
         {showFilters && (
-          <button className={`ui-btn ui-filters-btn${activeFilters.length ? ' is-on' : ''}`} type="button" onClick={() => setFiltersOpen(true)} aria-haspopup="dialog">
+          <button className={`ui-btn ui-island-btn ui-filters-btn${activeFilters.length ? ' is-on' : ''}`} type="button" onClick={() => setFiltersOpen(true)} aria-haspopup="dialog">
             Filters{activeFilters.length > 0 && <span className="ui-filters-count">{activeFilters.length}</span>}
           </button>
         )}
         {headActions.map((a) => (
-          <button key={a.label} onClick={a.onClick} className={`ui-btn${a.primary ? ' ui-btn-primary' : ''}${a.tone ? ` ui-btn-${a.tone}` : ''}`} type="button">
+          <button key={a.label} onClick={a.onClick} className={`ui-btn ui-island-btn${a.primary ? ' ui-btn-primary' : ''}${a.tone ? ` ui-btn-${a.tone}` : ''}`} type="button">
             {a.label}
           </button>
         ))}

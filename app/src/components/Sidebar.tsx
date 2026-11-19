@@ -3,6 +3,7 @@ import { NAV, USER, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
 import { can, canLogOut, isSuperAdmin, logOutAndLeave, me } from '../lib/auth';
 import { openAt } from '../lib/lastPlace';
+import { ThemeSwitch } from './ThemeSwitch';
 import { usePersisted } from '../lib/persist';
 import { pendingVersions, useReleaseState } from '../lib/releases';
 import { NavIcon } from './NavIcons';
@@ -87,17 +88,21 @@ export function Sidebar() {
               <div className="ui-user-meta">{superAdmin ? 'Super admin · RunTruck' : `${me()?.type ?? USER.role} · ${USER.company}`}</div>
             </div>
           </div>
-          <Link
-            to="/app/settings"
-            onClick={navigated}
-            className={`ui-nav-item${activeKey === 'settings' ? ' is-active' : ''}`}
-            aria-current={activeKey === 'settings' ? 'page' : undefined}
-            data-tip={tip('Settings')}
-            aria-label={tip('Settings')}
-          >
-            <NavIcon name="settings" />
-            <span className="ui-nav-label">Settings</span>
-          </Link>
+          {/* Release 1.48: light / dark sits beside Settings. */}
+          <div className="ui-foot-row">
+            <Link
+              to="/app/settings"
+              onClick={navigated}
+              className={`ui-nav-item${activeKey === 'settings' ? ' is-active' : ''}`}
+              aria-current={activeKey === 'settings' ? 'page' : undefined}
+              data-tip={tip('Settings')}
+              aria-label={tip('Settings')}
+            >
+              <NavIcon name="settings" />
+              <span className="ui-nav-label">Settings</span>
+            </Link>
+            <ThemeSwitch />
+          </div>
           {canLogOut() && (
             <button type="button" className="ui-nav-item" data-tip={tip('Log out')} aria-label={tip('Log out')} onClick={logOutAndLeave}>
               <NavIcon name="logout" />

@@ -324,3 +324,7 @@
   .lp-w .dash-kpi-note { display: none; }
   .lp-w .dash-kpi-value { margin-top: 10px; font-size: 26px; }
 }
+
+/* Release 1.48: the widgets sit straight on the page — no panel around them. */
+.dash-island { padding: 0; background: none; border-radius: 0; box-shadow: none; }
+:root[data-density="compact"] .dash-island { padding: 0; }

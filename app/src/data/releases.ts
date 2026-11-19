@@ -665,6 +665,25 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.48',
+    date: '2026-11-19',
+    title: 'Search everything, and a lighter top bar',
+    changes: [
+      {
+        id: 'global-search', kind: 'New', section: 'Everywhere', title: 'Search loads, trucks, brokers and more from the top bar (live for every company)',
+        details: 'The search at the top now suggests matches as you type: loads (by load or tender number, route, city, truck or driver), trucks, trailers, drivers (also by phone), customers and brokers (also by MC number) and facilities. Numbers match with or without the dash, so 40218 finds L-40218. Use the arrow keys and Enter, or click, to open one: a load opens its page, a truck, trailer, driver or customer opens its list narrowed to it. Press / anywhere to jump to the search, and Esc to close it. It is on every page now, a load’s page included, and still narrows the list on the page as before.',
+      },
+      {
+        id: 'topbar-islands', kind: 'Updated', section: 'Everywhere', title: 'Top bar on separate islands (live for every company)',
+        details: 'The top bar is no longer one grouped panel: the search floats on its own, and the clock, the notifications bell and each of the page’s buttons sit on islands of their own. On a phone the clock is left out to make room. The light / dark switch moved to the sidebar, beside Settings (under it when the sidebar is collapsed).',
+      },
+      {
+        id: 'sidebar-page-colour', kind: 'Updated', section: 'Everywhere', title: 'Sidebar in the page’s colour (live for every company)',
+        details: 'The sidebar now takes the colour of the background the widgets sit on, so the cards stand out; hover and the open page show as white pills. On the Dashboard the widgets sit straight on the page instead of inside one big panel.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
