@@ -654,6 +654,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.47',
+    date: '2026-11-19',
+    title: 'New day mode colours',
+    changes: [
+      {
+        id: 'day-palette', kind: 'Updated', section: 'Everywhere', title: 'Day mode in the new palette (live for every company)',
+        details: 'Day mode now uses the palette 141619 · 2C2E3A · 050A44 · 0A21C0 · B3B4BD on the 60/30/10 rule: about 60% cool lavender-grey and white for the page, cards, panels and the sidebar (white like the cards, so it stays quiet); 30% the dark slates for text and headings; 10% royal blue for buttons, links, charts and highlights, with navy for hover. The popups follow it too. The Blue accent in Settings › Appearance is the new royal blue; the other accents and dark mode are unchanged.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

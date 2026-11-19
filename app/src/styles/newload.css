@@ -24,6 +24,13 @@
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif; font-size: 16px; line-height: 1.5; color: var(--nl-ink);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
 }
+/* Day mode palette (release 1.47): the popups' greys in the same cool
+   lavender-grey family, ink in 141619, the corner message in 2C2E3A. */
+:root:not([data-theme="dark"]) :is(.nl, .nl-dp, .nl-toast) {
+  --nl-ink: #141619; --nl-mute: #5f6270; --nl-line: #dfe0e8; --nl-canvas: #f1f1f6;
+  --nl-s300: #c7c8d2; --nl-s400: #9799a6; --nl-s500: #676a78; --nl-field: #fafafc; --nl-soft: rgba(241, 241, 246, 0.7);
+}
+:root:not([data-theme="dark"]) .nl-toast { background: #2c2e3a; }
 /* Dark mode (the app's theme, <html data-theme="dark">): the same design on
    the app's dark surfaces. The invoice preview's paper stays white. */
 :root[data-theme="dark"] :is(.nl, .nl-dp, .nl-toast) {
