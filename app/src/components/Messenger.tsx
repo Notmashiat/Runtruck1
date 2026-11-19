@@ -11,7 +11,7 @@ import type { Load } from '../data/mock';
 import { USER } from '../data/mock';
 import {
   DRIVER_ROLE, chatName, chatOrder, initials, isImage, lastOf, messagesOf, preview, roleIn, seedMessenger, syncTruckGroups, toneOf, totalUnread, unreadIn,
-  type Chat, type ChatMessage, type MessengerState, type Person,
+  HOME_PLACE, fitPlace, fitSize, type Chat, type ChatMessage, type MessengerState, type PanelPlace, type PanelSize, type Person,
 } from '../data/messenger';
 import { IS_DEMO } from '../lib/account';
 import { fileSize, openDocument, readAttachment } from '../lib/attachments';
@@ -22,6 +22,7 @@ import { carriesFile, readDrop, startDocDrag } from '../lib/fileDrop';
 import { listen, mainWindow, popOut, post } from '../lib/messengerWindow';
 import { toast } from '../lib/toast';
 import { matchesQuery } from '../lib/search';
+import { usePersisted } from '../lib/persist';
 import { getSettings } from '../lib/settingsStore';
 import { Fa } from './Fa';
 import { useModal } from './FormBits';
@@ -106,6 +107,75 @@ export function Messenger({ mode = 'docked' }: { mode?: 'docked' | 'window' }) {
   // Release 1.44: files dragged over the panel (dropped in a chat, they are sent).
   const [dropping, setDropping] = useState(false);
   const dragDepth = useRef(0);
+  // Release 1.45: the panel's size, as the person left it.
+  // 'auto': the usual size (null is not stored, so it never reads as damaged).
+  const [size, setSize] = usePersisted<PanelSize | 'auto'>('runtruck-messenger-size', 'auto', (raw) => {
+    const v = raw as PanelSize | 'auto' | null;
+    if (v === 'auto' || v === null) return 'auto';
+    return typeof v.w === 'number' && typeof v.h === 'number' ? v : 'auto';
+  });
+  const [viewport, setViewport] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  useEffect(() => {
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  // Resizable in the app on a wide enough screen; never bigger than the window.
+  const resizable = !inWindow && viewport.w > 640;
+  const sized = resizable && size !== 'auto' ? fitSize(size, viewport) : null;
+  // Release 1.46: where the panel was left (dragged by its header), or 'home' (bottom right).
+  const [place, setPlace] = usePersisted<PanelPlace | 'home'>('runtruck-messenger-place', 'home', (raw) => {
+    const v = raw as PanelPlace | 'home' | null;
+    if (v === 'home' || v === null) return 'home';
+    return typeof v.r === 'number' && typeof v.b === 'number' ? v : 'home';
+  });
+  const shownSize = sized ?? { w: Math.min(390, viewport.w - 32), h: Math.min(Math.max(440, viewport.h / 2), viewport.h - 32) };
+  const placed = resizable && place !== 'home' ? fitPlace(place, shownSize, viewport) : null;
+  const moving = useRef<{ x: number; y: number; r: number; b: number; ratio: number; moved: boolean; el: HTMLElement } | null>(null);
+  const justMoved = useRef(false);
+  // Dragging the header (not its buttons' clicks) moves the panel.
+  const moveStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!resizable || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const t = e.target as HTMLElement;
+    if (!t.closest('.ms-head') || t.closest('input, textarea, .ms-resize')) return;
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    const ratio = r.width / el.offsetWidth || 1;
+    const cs = getComputedStyle(el);
+    moving.current = { x: e.clientX, y: e.clientY, r: parseFloat(cs.right) || HOME_PLACE.r, b: parseFloat(cs.bottom) || HOME_PLACE.b, ratio, moved: false, el };
+  };
+  const moveOn = (e: React.PointerEvent<HTMLDivElement>) => {
+    const m = moving.current;
+    if (!m) return;
+    const dx = (e.clientX - m.x) / m.ratio;
+    const dy = (e.clientY - m.y) / m.ratio;
+    if (!m.moved) {
+      if (Math.hypot(dx, dy) < 5) return;
+      m.moved = true;
+      m.el.setPointerCapture(e.pointerId);
+      m.el.classList.add('is-moving');
+      document.body.classList.add('ms-moving');
+    }
+    const next = fitPlace({ r: m.r - dx, b: m.b - dy }, { w: m.el.offsetWidth, h: m.el.offsetHeight }, { w: window.innerWidth, h: window.innerHeight });
+    m.el.style.right = `${next.r}px`;
+    m.el.style.bottom = `${next.b}px`;
+  };
+  const moveEnd = () => {
+    const m = moving.current;
+    moving.current = null;
+    if (!m?.moved) return;
+    justMoved.current = true;
+    m.el.classList.remove('is-moving');
+    document.body.classList.remove('ms-moving');
+    setPlace({ r: parseFloat(m.el.style.right) || HOME_PLACE.r, b: parseFloat(m.el.style.bottom) || HOME_PLACE.b });
+  };
+  const goHome = (e: React.MouseEvent<HTMLDivElement>) => {
+    const t = e.target as HTMLElement;
+    if (!resizable || !t.closest('.ms-head') || t.closest('button, input, a')) return;
+    e.currentTarget.style.right = '';
+    e.currentTarget.style.bottom = '';
+    setPlace('home');
+  };
 
   const office = useMemo(() => getSettings().team.filter((t) => t.active).map((t) => ({ name: t.name, role: t.role })), []);
   const truckLinks = useMemo(() => trucks.map((t) => ({ unit: t.unit, driver: t.driver && t.driver !== 'Unassigned' ? t.driver : '', archived: t.archived })), [trucks]);
@@ -256,12 +326,17 @@ export function Messenger({ mode = 'docked' }: { mode?: 'docked' | 'window' }) {
         </button>
       ) : (
         <div
-          className={`ms-panel${inWindow ? ' is-window' : ''}`} role={inWindow ? 'main' : 'dialog'} aria-label="Messages"
+          className={`ms-panel${inWindow ? ' is-window' : ''}${resizable ? ' can-move' : ''}`} role={inWindow ? 'main' : 'dialog'} aria-label="Messages"
+          style={sized || placed ? { ...(sized ? { width: sized.w, height: sized.h } : {}), ...(placed ? { right: placed.r, bottom: placed.b } : {}) } : undefined}
+          onPointerDown={moveStart} onPointerMove={moveOn} onPointerUp={moveEnd} onPointerCancel={moveEnd} onDoubleClick={goHome}
+          // A drag of the header is not a click on what is under the pointer.
+          onClickCapture={(e) => { if (justMoved.current) { justMoved.current = false; e.stopPropagation(); e.preventDefault(); } }}
           onDragEnter={(e) => { if (!carriesFile(e)) return; e.preventDefault(); dragDepth.current += 1; setDropping(true); }}
           onDragOver={(e) => { if (!carriesFile(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = chat ? 'copy' : 'none'; }}
           onDragLeave={() => { dragDepth.current = Math.max(0, dragDepth.current - 1); if (!dragDepth.current) setDropping(false); }}
           onDrop={(e) => void dropFiles(e)}
         >
+          {resizable && <ResizeHandles onDone={setSize} onReset={() => setSize('auto')} />}
           {dropping && (
             <div className="ms-drop" aria-hidden="true">
               <span><Fa icon={faPaperclip} />{chat ? `Drop to send to ${chatName(chat, me.name)}` : 'Open a chat to send files'}</span>
@@ -625,5 +700,77 @@ function LoadFinder({ doc, loads, onPick, onBack, onClose }: { doc: BillDocument
         </footer>
       </div>
     </dialog>
+  );
+}
+
+// — resizing the panel (release 1.45) —
+
+type Edge = 'left' | 'top' | 'corner';
+
+// The panel sits at the bottom right, so it grows from its left edge, its
+// top edge or its top-left corner. Dragging sizes it live; letting go keeps
+// the size. Double-click goes back to the usual size. The corner also takes
+// the arrow keys.
+function ResizeHandles({ onDone, onReset }: { onDone: (s: PanelSize) => void; onReset: () => void }) {
+  // `ratio`: on-screen pixels per layout pixel (the text-size setting scales the page).
+  const start = useRef<{ x: number; y: number; w: number; h: number; ratio: number; edge: Edge } | null>(null);
+  // The panel a handle belongs to.
+  const panelOf = (el: Element) => el.closest<HTMLElement>('.ms-panel');
+  const apply = (el: HTMLElement, s: PanelSize) => {
+    const fit = fitSize(s, { w: window.innerWidth, h: window.innerHeight });
+    el.style.width = `${fit.w}px`;
+    el.style.height = `${fit.h}px`;
+    return fit;
+  };
+  const down = (edge: Edge) => (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = panelOf(e.currentTarget);
+    if (!el || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const ratio = el.getBoundingClientRect().width / el.offsetWidth || 1;
+    start.current = { x: e.clientX, y: e.clientY, w: el.offsetWidth, h: el.offsetHeight, ratio, edge };
+    el.classList.add('is-resizing');
+    document.body.classList.add('ms-resizing');
+  };
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = start.current;
+    const el = panelOf(e.currentTarget);
+    if (!s || !el) return;
+    apply(el, { w: s.edge === 'top' ? s.w : s.w - (e.clientX - s.x) / s.ratio, h: s.edge === 'left' ? s.h : s.h - (e.clientY - s.y) / s.ratio });
+  };
+  const up = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = panelOf(e.currentTarget);
+    if (!start.current || !el) return;
+    start.current = null;
+    el.classList.remove('is-resizing');
+    document.body.classList.remove('ms-resizing');
+    onDone({ w: el.offsetWidth, h: el.offsetHeight });
+  };
+  const reset = (e: { currentTarget: Element }) => {
+    const el = panelOf(e.currentTarget);
+    if (el) { el.style.width = ''; el.style.height = ''; }
+    onReset();
+  };
+  const key = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = panelOf(e.currentTarget);
+    if (!el) return;
+    const r = { width: el.offsetWidth, height: el.offsetHeight };
+    const step = e.shiftKey ? 80 : 24;
+    const next = { ArrowLeft: { w: r.width + step, h: r.height }, ArrowRight: { w: r.width - step, h: r.height }, ArrowUp: { w: r.width, h: r.height + step }, ArrowDown: { w: r.width, h: r.height - step } }[e.key];
+    if (next) { e.preventDefault(); onDone(apply(el, next)); }
+    else if (e.key === 'Home' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); reset(e); }
+  };
+  const handle = (edge: Edge) => ({ onPointerDown: down(edge), onPointerMove: move, onPointerUp: up, onPointerCancel: up, onDoubleClick: reset });
+  return (
+    <>
+      <div className="ms-resize is-left" aria-hidden="true" {...handle('left')} />
+      <div className="ms-resize is-top" aria-hidden="true" {...handle('top')} />
+      <div
+        className="ms-resize is-corner" role="separator" tabIndex={0} aria-orientation="vertical"
+        aria-label="Resize Messages: drag, or use the arrow keys (Shift for bigger steps, Home for the usual size)"
+        title="Drag to resize · double-click for the usual size"
+        onKeyDown={key} {...handle('corner')}
+      />
+    </>
   );
 }

@@ -266,3 +266,28 @@
 .ms-drop span { display: inline-flex; align-items: center; gap: 9px; padding: 11px 16px; border-radius: 999px; background: var(--ms-accent); color: #fff; font-size: 14px; font-weight: 700; }
 .ms-photo[draggable='true'], .ms-file[draggable='true'] { cursor: grab; }
 .ms-photo[draggable='true']:active, .ms-file[draggable='true']:active { cursor: grabbing; }
+
+/* — resizing the panel (release 1.45): grab its left edge, top edge or
+   top-left corner — */
+.ms-resize { position: absolute; z-index: 8; touch-action: none; }
+.ms-resize.is-left { top: 14px; bottom: 14px; left: -5px; width: 12px; cursor: ew-resize; }
+.ms-resize.is-top { top: -5px; left: 14px; right: 14px; height: 12px; cursor: ns-resize; }
+.ms-resize.is-corner { top: -4px; left: -4px; width: 18px; height: 18px; border-radius: 6px; cursor: nwse-resize; }
+.ms-resize.is-corner::after {
+  content: ''; position: absolute; top: 6px; left: 6px; width: 8px; height: 8px; border-top: 2px solid var(--ms-muted); border-left: 2px solid var(--ms-muted);
+  border-top-left-radius: 3px; opacity: 0; transition: opacity 120ms ease;
+}
+.ms-panel:hover .ms-resize.is-corner::after, .ms-resize.is-corner:focus-visible::after, .ms-panel.is-resizing .ms-resize.is-corner::after { opacity: 0.8; }
+.ms-resize.is-corner:focus-visible { outline: 2px solid var(--ms-accent); outline-offset: 1px; }
+.ms-resize.is-left:hover, .ms-resize.is-top:hover { background: color-mix(in srgb, var(--ms-accent) 22%, transparent); border-radius: 999px; }
+.ms-panel.is-resizing { animation: none; transition: none; user-select: none; }
+body.ms-resizing, body.ms-resizing * { user-select: none !important; }
+body.ms-resizing { cursor: nwse-resize; }
+
+/* — moving the panel (release 1.46): drag its header — */
+.ms-panel.can-move .ms-head { cursor: grab; }
+.ms-panel.can-move .ms-head :is(button, input, a) { cursor: pointer; }
+.ms-panel.can-move .ms-head input { cursor: text; }
+.ms-panel.is-moving { animation: none; transition: none; box-shadow: 0 26px 60px rgba(15, 23, 42, 0.35), 0 0 0 1px var(--ms-line); }
+.ms-panel.is-moving .ms-head { cursor: grabbing; }
+body.ms-moving, body.ms-moving * { user-select: none !important; cursor: grabbing !important; }

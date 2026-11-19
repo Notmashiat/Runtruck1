@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRIVER_ROLE, chatName, chatOrder, initials, preview, roleIn, seedMessenger, syncTruckGroups, toneOf, totalUnread, truckChatId, unreadIn, type MessengerState } from './messenger';
+import { DRIVER_ROLE, fitPlace, fitSize, chatName, chatOrder, initials, preview, roleIn, seedMessenger, syncTruckGroups, toneOf, totalUnread, truckChatId, unreadIn, type MessengerState } from './messenger';
 
 const now = Date.parse('2026-11-17T18:00:00Z');
 const ME = { name: 'Rosa Medina', role: 'Admin' };
@@ -72,5 +72,17 @@ describe('messenger', () => {
   });
   it('previews a dispatched load', () => {
     expect(preview({ id: '1', chatId: 't', from: 'Me', at: '', load: 'L-9', text: 'Load #L-9' }, 'Me', 'group').text).toBe('Load L-9 dispatched');
+  });
+  it('keeps the panel between its minimum size and the window', () => {
+    expect(fitSize({ w: 100, h: 100 }, { w: 1440, h: 900 })).toEqual({ w: 320, h: 380 });
+    expect(fitSize({ w: 3000, h: 3000 }, { w: 1440, h: 900 })).toEqual({ w: 1408, h: 868 });
+    expect(fitSize({ w: 520.4, h: 640.6 }, { w: 1440, h: 900 })).toEqual({ w: 520, h: 641 });
+  });
+  it('keeps a moved panel on screen', () => {
+    const size = { w: 390, h: 450 };
+    const vp = { w: 1440, h: 900 };
+    expect(fitPlace({ r: 500, b: 200 }, size, vp)).toEqual({ r: 500, b: 200 });
+    expect(fitPlace({ r: -50, b: -50 }, size, vp)).toEqual({ r: 8, b: 8 });
+    expect(fitPlace({ r: 5000, b: 5000 }, size, vp)).toEqual({ r: 1042, b: 442 });
   });
 });

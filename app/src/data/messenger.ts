@@ -192,3 +192,31 @@ export function seedMessenger(me: Person, drivers: string[], office: Person[], o
   for (const t of withDriver) read[truckChatId(t.unit)] = ago(now, 9 * 60);
   return { ...base, messages, read };
 }
+
+// — the panel's size (release 1.45) —
+
+export interface PanelSize { w: number; h: number }
+const MIN_W = 320;
+const MIN_H = 380;
+const MARGIN = 32;
+
+// A size that fits: at least the minimum, and inside the window.
+export function fitSize(s: PanelSize, viewport: PanelSize): PanelSize {
+  const maxW = Math.max(MIN_W, viewport.w - MARGIN);
+  const maxH = Math.max(MIN_H, viewport.h - MARGIN);
+  return { w: Math.round(Math.min(maxW, Math.max(MIN_W, s.w))), h: Math.round(Math.min(maxH, Math.max(MIN_H, s.h))) };
+}
+
+// — where the panel sits (release 1.46): its distance from the window's right
+// and bottom edges, so resizing from its left and top edges keeps working —
+
+export interface PanelPlace { r: number; b: number }
+export const HOME_PLACE: PanelPlace = { r: 20, b: 16 };
+const EDGE = 8;
+
+// A place that keeps the whole panel (of `size`) on screen.
+export function fitPlace(p: PanelPlace, size: PanelSize, viewport: PanelSize): PanelPlace {
+  const maxR = Math.max(EDGE, viewport.w - size.w - EDGE);
+  const maxB = Math.max(EDGE, viewport.h - size.h - EDGE);
+  return { r: Math.round(Math.min(maxR, Math.max(EDGE, p.r))), b: Math.round(Math.min(maxB, Math.max(EDGE, p.b))) };
+}

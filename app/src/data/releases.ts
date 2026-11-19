@@ -632,6 +632,28 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.45',
+    date: '2026-11-18',
+    title: 'Resize Messages',
+    changes: [
+      {
+        id: 'messenger-resize', kind: 'New', section: 'Everywhere', title: 'Resize the Messages panel (live for every company)',
+        details: 'Drag the Messages panel’s left edge, top edge or top-left corner to make it wider or taller (from 320 × 380 up to nearly the whole window). The size is kept for next time; double-click an edge to go back to the usual size. With the keyboard, the corner handle takes the arrow keys (Shift for bigger steps, Home for the usual size). On a phone the panel keeps its full-width size.',
+      },
+    ],
+  },
+  {
+    id: '1.46',
+    date: '2026-11-18',
+    title: 'Move Messages anywhere',
+    changes: [
+      {
+        id: 'messenger-move', kind: 'New', section: 'Everywhere', title: 'Drag Messages anywhere on the page (live for every company)',
+        details: 'Drag the Messages panel by its header to anywhere on the page and it stays there, also the next time it is opened. It always stays fully on screen, and comes back into view if the window gets smaller. Double-click an empty part of the header to send it back to the bottom right. The header’s buttons still work as before, and it can still be resized from its edges. The closed Messages bar stays at the bottom right.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
